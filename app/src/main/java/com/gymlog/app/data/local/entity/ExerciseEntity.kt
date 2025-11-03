@@ -1,0 +1,43 @@
+package com.gymlog.app.data.local.entity
+
+import androidx.room.Entity
+import androidx.room.Index
+import androidx.room.PrimaryKey
+import java.util.UUID
+
+@Entity(
+    tableName = "exercises",
+    indices = [
+        Index(value = ["name"]),
+        Index(value = ["muscleGroup"]),
+        Index(value = ["createdAt"])
+    ]
+)
+data class ExerciseEntity(
+    @PrimaryKey
+    val id: String = UUID.randomUUID().toString(),
+    val name: String,
+    val description: String = "",
+    val muscleGroup: MuscleGroup,
+    val imageUri: String? = null,
+    val currentSeries: Int = 0,
+    val currentReps: Int = 0,
+    val currentWeightKg: Float = 0f,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+enum class MuscleGroup(val displayName: String) {
+    LEGS("Piernas"),
+    GLUTES("Gluteos"),
+    BACK("Espalda"),
+    CHEST("Torso"),
+    BICEPS("Biceps"),
+    TRICEPS("Triceps"),
+    SHOULDERS("Hombros");
+    
+    companion object {
+        fun fromDisplayName(name: String): MuscleGroup? {
+            return values().find { it.displayName == name }
+        }
+    }
+}
