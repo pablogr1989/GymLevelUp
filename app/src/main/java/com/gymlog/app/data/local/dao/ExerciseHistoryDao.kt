@@ -23,4 +23,7 @@ interface ExerciseHistoryDao {
     
     @Query("SELECT * FROM exercise_history ORDER BY timestamp DESC")
     fun getAllHistory(): Flow<List<ExerciseHistoryEntity>>
+    
+    @Query("DELETE FROM exercise_history WHERE id = :historyId")
+    suspend fun deleteHistoryById(historyId: String)
 }

@@ -57,6 +57,18 @@ class ExerciseRepositoryImpl @Inject constructor(
         exerciseDao.updateExerciseStats(exerciseId, series, reps, weight)
     }
     
+    override suspend fun updateExerciseNotes(exerciseId: String, notes: String) {
+        exerciseDao.updateExerciseNotes(exerciseId, notes)
+    }
+    
+    override suspend fun updateExerciseChangeLog(exerciseId: String, changeLog: String) {
+        exerciseDao.updateExerciseChangeLog(exerciseId, changeLog)
+    }
+    
+    override suspend fun updateExerciseInfo(exerciseId: String, name: String, description: String, muscleGroup: MuscleGroup, imageUri: String?) {
+        exerciseDao.updateExerciseInfo(exerciseId, name, description, muscleGroup, imageUri)
+    }
+    
     override fun getHistoryForExercise(exerciseId: String): Flow<List<ExerciseHistory>> {
         return historyDao.getHistoryForExercise(exerciseId).map { entities ->
             entities.map { it.toDomainModel() }
@@ -69,6 +81,14 @@ class ExerciseRepositoryImpl @Inject constructor(
     
     override suspend fun deleteHistory(history: ExerciseHistory) {
         historyDao.deleteHistory(history.toEntity())
+    }
+    
+    override suspend fun deleteHistoryById(historyId: String) {
+        historyDao.deleteHistoryById(historyId)
+    }
+    
+    override suspend fun deleteAllHistoryForExercise(exerciseId: String) {
+        historyDao.deleteAllHistoryForExercise(exerciseId)
     }
     
     override fun getAllHistory(): Flow<List<ExerciseHistory>> {
@@ -88,6 +108,8 @@ class ExerciseRepositoryImpl @Inject constructor(
             currentSeries = currentSeries,
             currentReps = currentReps,
             currentWeightKg = currentWeightKg,
+            notes = notes,
+            changeLogText = changeLogText,
             createdAt = createdAt
         )
     }
@@ -102,6 +124,8 @@ class ExerciseRepositoryImpl @Inject constructor(
             currentSeries = currentSeries,
             currentReps = currentReps,
             currentWeightKg = currentWeightKg,
+            notes = notes,
+            changeLogText = changeLogText,
             createdAt = createdAt
         )
     }

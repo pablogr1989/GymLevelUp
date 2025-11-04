@@ -23,6 +23,8 @@ data class ExerciseEntity(
     val currentSeries: Int = 0,
     val currentReps: Int = 0,
     val currentWeightKg: Float = 0f,
+    val notes: String = "",
+    val changeLogText: String = "",
     val createdAt: Long = System.currentTimeMillis()
 )
 

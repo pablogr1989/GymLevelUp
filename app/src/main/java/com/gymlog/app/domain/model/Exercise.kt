@@ -11,5 +11,7 @@ data class Exercise(
     val currentSeries: Int,
     val currentReps: Int,
     val currentWeightKg: Float,
+    val notes: String = "",
+    val changeLogText: String = "",
     val createdAt: Long
 )

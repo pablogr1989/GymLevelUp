@@ -44,10 +44,10 @@ fun MainScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("GymLog") },
+                title = { Text("GymLevelUp") },
                 actions = {
                     IconButton(onClick = onNavigateToCreate) {
-                        Icon(Icons.Default.Add, contentDescription = "AÃ±adir ejercicio")
+                        Icon(Icons.Default.Add, contentDescription = "Añadir ejercicio")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -125,7 +125,7 @@ fun MainScreen(
             onDismissRequest = viewModel::dismissDeleteDialog,
             title = { Text("Eliminar ejercicio") },
             text = {
-                Text("Â¿EstÃ¡s seguro de que quieres eliminar '${exercise.name}'? Se eliminarÃ¡ tambiÃ©n todo su historial.")
+                Text("¿Estas seguro de que quieres eliminar '${exercise.name}'? Se eliminara tambien todo su historial.")
             },
             confirmButton = {
                 TextButton(
@@ -314,7 +314,7 @@ private fun ExerciseCard(
             IconButton(onClick = onLongClick) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
-                    contentDescription = "MÃ¡s opciones",
+                    contentDescription = "Mas opciones",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

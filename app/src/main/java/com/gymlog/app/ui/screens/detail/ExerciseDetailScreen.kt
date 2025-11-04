@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -13,10 +12,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -28,6 +26,7 @@ import java.util.*
 @Composable
 fun ExerciseDetailScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToEdit: (String) -> Unit,
     viewModel: ExerciseDetailViewModel = hiltViewModel()
 ) {
     val exercise by viewModel.exercise.collectAsState()
@@ -35,27 +34,31 @@ fun ExerciseDetailScreen(
     val series by viewModel.series.collectAsState()
     val reps by viewModel.reps.collectAsState()
     val weight by viewModel.weight.collectAsState()
+    val notes by viewModel.notes.collectAsState()
     val showSaveSuccess by viewModel.showSaveSuccess.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val showDeleteHistoryDialog by viewModel.showDeleteHistoryDialog.collectAsState()
+    val showDeleteEntryDialog by viewModel.showDeleteEntryDialog.collectAsState()
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
-                    Text(
-                        text = exercise?.name ?: "Cargando...",
-                        maxLines = 1
-                    )
-                },
+                title = { Text("Detalles del Ejercicio") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.Default.ArrowBack, "Volver")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { exercise?.let { onNavigateToEdit(it.id) } }) {
+                        Icon(Icons.Default.Edit, "Editar")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         }
@@ -68,193 +71,188 @@ fun ExerciseDetailScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Exercise info card
+                // Imagen y nombre
                 item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            // Image
-                            if (ex.imageUri != null) {
-                                AsyncImage(
-                                    model = ex.imageUri,
-                                    contentDescription = ex.name,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(200.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(200.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.FitnessCenter,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(64.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                            
-                            // Name and muscle group
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = ex.name,
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                AssistChip(
-                                    onClick = { },
-                                    label = { Text(ex.muscleGroup.displayName) },
-                                    leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Category,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                )
-                            }
-                            
-                            // Description
-                            if (ex.description.isNotEmpty()) {
-                                Text(
-                                    text = ex.description,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        if (ex.imageUri != null) {
+                            AsyncImage(
+                                model = ex.imageUri,
+                                contentDescription = ex.name,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(200.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                        
+                        Text(
+                            text = ex.name,
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        
+                        AssistChip(
+                            onClick = {},
+                            label = { Text(ex.muscleGroup.displayName) }
+                        )
+                        
+                        if (ex.description.isNotEmpty()) {
+                            Text(
+                                text = ex.description,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
                 
-                // Current stats section
+                // NOTAS
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF2C2C2E)
+                        )
                     ) {
                         Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Description,
+                                    contentDescription = null,
+                                    tint = Color(0xFF0A84FF)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Notas",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = Color.White
+                                )
+                            }
+                            
+                            OutlinedTextField(
+                                value = notes,
+                                onValueChange = viewModel::updateNotes,
+                                placeholder = { 
+                                    Text(
+                                        "Escribe observaciones sobre este ejercicio...",
+                                        color = Color.Gray
+                                    ) 
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 3,
+                                maxLines = 6,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White,
+                                    focusedBorderColor = Color(0xFF0A84FF),
+                                    unfocusedBorderColor = Color.Gray
+                                )
+                            )
+                        }
+                    }
+                }
+                
+                // VALORES ACTUALES
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF2C2C2E)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                text = "Estadísticas actuales",
+                                text = "Valores Actuales",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                color = Color.White
                             )
                             
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                // Series input
                                 OutlinedTextField(
                                     value = series,
                                     onValueChange = viewModel::updateSeries,
-                                    label = { Text("Series") },
-                                    keyboardOptions = KeyboardOptions(
-                                        keyboardType = KeyboardType.Number
-                                    ),
+                                    label = { Text("Series", color = Color.Gray) },
                                     modifier = Modifier.weight(1f),
-                                    singleLine = true,
                                     leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Repeat,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
+                                        Icon(Icons.Default.Repeat, null, tint = Color(0xFF0A84FF))
+                                    },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    )
                                 )
                                 
-                                // Reps input
                                 OutlinedTextField(
                                     value = reps,
                                     onValueChange = viewModel::updateReps,
-                                    label = { Text("Repeticiones") },
-                                    keyboardOptions = KeyboardOptions(
-                                        keyboardType = KeyboardType.Number
-                                    ),
+                                    label = { Text("Repeticiones", color = Color.Gray) },
                                     modifier = Modifier.weight(1f),
-                                    singleLine = true,
                                     leadingIcon = {
-                                        Icon(
-                                            imageVector = Icons.Default.Numbers,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
+                                        Icon(Icons.Default.Numbers, null, tint = Color(0xFF0A84FF))
+                                    },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    )
                                 )
                             }
                             
-                            // Weight input
                             OutlinedTextField(
                                 value = weight,
                                 onValueChange = viewModel::updateWeight,
-                                label = { Text("Peso (kg)") },
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Decimal
-                                ),
+                                label = { Text("Peso (kg)", color = Color.Gray) },
                                 modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
                                 leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Default.FitnessCenter,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
+                                    Icon(Icons.Default.FitnessCenter, null, tint = Color(0xFF0A84FF))
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                )
                             )
                             
-                            // Save and cancel buttons
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 OutlinedButton(
-                                    onClick = {
-                                        viewModel.updateSeries(ex.currentSeries.toString())
-                                        viewModel.updateReps(ex.currentReps.toString())
-                                        viewModel.updateWeight(ex.currentWeightKg.toString())
-                                    },
+                                    onClick = viewModel::resetToCurrentValues,
                                     modifier = Modifier.weight(1f),
                                     enabled = !isLoading
                                 ) {
+                                    Icon(Icons.Default.Close, null)
+                                    Spacer(modifier = Modifier.width(4.dp))
                                     Text("Cancelar")
                                 }
                                 
                                 Button(
                                     onClick = viewModel::saveExerciseStats,
                                     modifier = Modifier.weight(1f),
-                                    enabled = !isLoading && series.isNotEmpty() && reps.isNotEmpty()
+                                    enabled = !isLoading,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF0A84FF)
+                                    )
                                 ) {
                                     if (isLoading) {
                                         CircularProgressIndicator(
-                                            modifier = Modifier.size(16.dp),
-                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            modifier = Modifier.size(20.dp),
+                                            color = Color.White,
                                             strokeWidth = 2.dp
                                         )
                                     } else {
+                                        Icon(Icons.Default.Check, null)
+                                        Spacer(modifier = Modifier.width(4.dp))
                                         Text("Guardar")
                                     }
                                 }
@@ -263,65 +261,93 @@ fun ExerciseDetailScreen(
                     }
                 }
                 
-                // History section
-                if (history.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "Historial",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    
-                    items(history) { entry ->
-                        HistoryEntryCard(
-                            entry = entry,
-                            onDelete = { viewModel.deleteHistoryEntry(entry) }
-                        )
-                    }
-                } else {
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        ) {
+                // HISTORIAL
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.History, null, tint = Color(0xFF0A84FF))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "No hay historial registrado",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                "Historial",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
+                        }
+                        
+                        if (history.isNotEmpty()) {
+                            TextButton(
+                                onClick = viewModel::showDeleteHistoryDialog,
+                                colors = ButtonDefaults.textButtonColors(
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Icon(Icons.Default.DeleteSweep, null)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Borrar Todo")
+                            }
                         }
                     }
                 }
+                
+                items(history) { entry ->
+                    HistoryEntryCard(
+                        entry = entry,
+                        onDelete = { viewModel.showDeleteEntryDialog(entry) }
+                    )
+                }
             }
-        } ?: Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
         }
     }
     
-    // Success snackbar
-    if (showSaveSuccess) {
-        Snackbar(
-            modifier = Modifier.padding(16.dp),
-            action = {
-                TextButton(onClick = viewModel::dismissSaveSuccess) {
-                    Text("OK")
+    // Diálogos
+    if (showDeleteHistoryDialog) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissDeleteHistoryDialog,
+            title = { Text("Borrar todo el historial") },
+            text = { Text("¿Estás seguro? Esta acción no se puede deshacer.") },
+            confirmButton = {
+                TextButton(
+                    onClick = viewModel::deleteAllHistory,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Borrar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissDeleteHistoryDialog) {
+                    Text("Cancelar")
                 }
             }
-        ) {
-            Text("Estadísticas guardadas correctamente")
-        }
+        )
+    }
+    
+    showDeleteEntryDialog?.let { entry ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissDeleteEntryDialog,
+            title = { Text("Eliminar entrada") },
+            text = { Text("¿Eliminar esta entrada del historial?") },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.deleteHistoryEntry(entry) },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissDeleteEntryDialog) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 
@@ -334,7 +360,9 @@ private fun HistoryEntryCard(
     
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF2C2C2E)
+        )
     ) {
         Row(
             modifier = Modifier
@@ -343,62 +371,26 @@ private fun HistoryEntryCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
+            Column {
                 Text(
                     text = dateFormat.format(Date(entry.timestamp)),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color.Gray
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Repeat,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "${entry.series} × ${entry.reps}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FitnessCenter,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "${entry.weightKg} kg",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "${entry.series} × ${entry.reps} — ${entry.weightKg} kg",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium
+                )
             }
             
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier.size(32.dp)
-            ) {
+            IconButton(onClick = onDelete) {
                 Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Eliminar",
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(20.dp)
+                    Icons.Default.Delete,
+                    "Eliminar",
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
         }

@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.gymlog.app.ui.navigation.GymLogNavigation
+import com.gymlog.app.ui.screens.MainAppScreen
 import com.gymlog.app.ui.theme.GymLogTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    GymLogNavigation()
+                    MainAppScreen()
                 }
             }
         }

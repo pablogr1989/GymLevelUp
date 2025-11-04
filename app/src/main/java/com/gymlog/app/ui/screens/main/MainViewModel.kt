@@ -34,7 +34,7 @@ class MainViewModel @Inject constructor(
         )
     
     // Optimizar filtrado con early returns y sequence para lazy evaluation
-    val exercises: StateFlow<Map<MuscleGroup, List<Exercise>>> =
+    val exercises: StateFlow<Map<MuscleGroup, List<Exercise>>> = 
         combine(
             allExercisesFlow,
             searchQuery,  // StateFlow ya tiene distinctUntilChanged incorporado

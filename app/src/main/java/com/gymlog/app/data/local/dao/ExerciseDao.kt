@@ -37,4 +37,13 @@ interface ExerciseDao {
     
     @Query("UPDATE exercises SET currentSeries = :series, currentReps = :reps, currentWeightKg = :weight WHERE id = :exerciseId")
     suspend fun updateExerciseStats(exerciseId: String, series: Int, reps: Int, weight: Float)
+    
+    @Query("UPDATE exercises SET notes = :notes WHERE id = :exerciseId")
+    suspend fun updateExerciseNotes(exerciseId: String, notes: String)
+    
+    @Query("UPDATE exercises SET changeLogText = :changeLog WHERE id = :exerciseId")
+    suspend fun updateExerciseChangeLog(exerciseId: String, changeLog: String)
+    
+    @Query("UPDATE exercises SET name = :name, description = :description, muscleGroup = :muscleGroup, imageUri = :imageUri WHERE id = :exerciseId")
+    suspend fun updateExerciseInfo(exerciseId: String, name: String, description: String, muscleGroup: MuscleGroup, imageUri: String?)
 }
