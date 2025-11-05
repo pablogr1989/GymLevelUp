@@ -104,4 +104,13 @@ interface DaySlotDao {
 
     @Query("DELETE FROM day_slots")
     suspend fun deleteAllDaySlots()
+
+    @Query("""
+        SELECT day_slots.* FROM day_slots 
+        JOIN weeks ON day_slots.weekId = weeks.id 
+        JOIN months ON weeks.monthId = months.id 
+        WHERE months.calendarId = :calendarId 
+        ORDER BY months.monthNumber, weeks.weekNumber, day_slots.dayOfWeek
+    """)
+    fun getDaysForCalendar(calendarId: String): Flow<List<DaySlotEntity>>
 }

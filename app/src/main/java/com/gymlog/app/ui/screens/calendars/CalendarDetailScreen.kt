@@ -289,7 +289,7 @@ private fun DayBox(
                 }
             )
 
-            if (daySlot.completed) {
+            /*if (daySlot.completed) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
                     contentDescription = "Completado",
@@ -299,7 +299,7 @@ private fun DayBox(
                         .size(16.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
-            }
+            }*/
         }
     }
 }

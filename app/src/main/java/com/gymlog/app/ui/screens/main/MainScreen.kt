@@ -18,6 +18,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.gymlog.app.data.local.entity.MuscleGroup
 import com.gymlog.app.domain.model.Exercise
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.ui.res.painterResource
+import com.gymlog.app.data.local.entity.DayCategory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -236,17 +238,19 @@ private fun MuscleGroupHeader(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val iconRes = when (group) {
+                    MuscleGroup.LEGS -> com.gymlog.app.R.drawable.ic_pierna
+                    MuscleGroup.GLUTES -> com.gymlog.app.R.drawable.ic_gluteos
+                    MuscleGroup.BACK -> com.gymlog.app.R.drawable.ic_espalda
+                    MuscleGroup.CHEST -> com.gymlog.app.R.drawable.ic_torso
+                    MuscleGroup.BICEPS -> com.gymlog.app.R.drawable.ic_biceps
+                    MuscleGroup.TRICEPS -> com.gymlog.app.R.drawable.ic_triceps
+                    MuscleGroup.SHOULDERS -> com.gymlog.app.R.drawable.ic_hombros
+                }
                 Icon(
-                    imageVector = when (group) {
-                        MuscleGroup.LEGS -> Icons.Default.Accessibility
-                        MuscleGroup.GLUTES -> Icons.Default.FitnessCenter
-                        MuscleGroup.BACK -> Icons.Default.Accessibility
-                        MuscleGroup.CHEST -> Icons.Default.FitnessCenter
-                        MuscleGroup.BICEPS -> Icons.Default.SportsMma
-                        MuscleGroup.TRICEPS -> Icons.Default.SportsMma
-                        MuscleGroup.SHOULDERS -> Icons.Default.Accessibility
-                    },
+                    painter = painterResource(id = iconRes),
                     contentDescription = null,
+                    modifier = Modifier.size(32.dp),
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Column {

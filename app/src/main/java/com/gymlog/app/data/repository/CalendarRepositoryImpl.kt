@@ -147,6 +147,29 @@ class CalendarRepositoryImpl @Inject constructor(
         return CalendarWithMonths(calendar, monthsWithWeeks)
     }
 
+    override fun getCalendarWithMonthsFlow(calendarId: String): Flow<CalendarWithMonths?> {
+        return daySlotDao.getDaysForCalendar(calendarId).map { _ ->
+            // Cuando cambian los DaySlots, reconstruimos todo el CalendarWithMonths
+            val calendar = calendarDao.getCalendarById(calendarId)?.toDomainModel() ?: return@map null
+            val months = monthDao.getMonthsForCalendar(calendarId).first()
+
+            val monthsWithWeeks = months.map { monthEntity ->
+                val month = monthEntity.toDomainModel()
+                val weeks = weekDao.getWeeksForMonth(month.id).first()
+
+                val weeksWithDays = weeks.map { weekEntity ->
+                    val week = weekEntity.toDomainModel()
+                    val days = daySlotDao.getDaysForWeek(week.id).first().map { it.toDomainModel() }
+                    WeekWithDays(week, days)
+                }
+
+                MonthWithWeeks(month, weeksWithDays)
+            }
+
+            CalendarWithMonths(calendar, monthsWithWeeks)
+        }
+    }
+
     override suspend fun getMonthWithWeeks(monthId: String): MonthWithWeeks? {
         val month = monthDao.getMonthById(monthId)?.toDomainModel() ?: return null
         val weeks = weekDao.getWeeksForMonth(monthId).first()

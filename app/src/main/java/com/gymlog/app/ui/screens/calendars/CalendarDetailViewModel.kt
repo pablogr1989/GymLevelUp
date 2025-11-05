@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 
 @HiltViewModel
 class CalendarDetailViewModel @Inject constructor(
@@ -19,8 +22,13 @@ class CalendarDetailViewModel @Inject constructor(
     
     private val calendarId: String = savedStateHandle.get<String>("calendarId") ?: ""
     
-    private val _calendarWithMonths = MutableStateFlow<CalendarWithMonths?>(null)
-    val calendarWithMonths = _calendarWithMonths.asStateFlow()
+    val calendarWithMonths: StateFlow<CalendarWithMonths?> = repository
+        .getCalendarWithMonthsFlow(calendarId)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
     
     private val _currentMonthIndex = MutableStateFlow(0)
     val currentMonthIndex = _currentMonthIndex.asStateFlow()
@@ -33,21 +41,11 @@ class CalendarDetailViewModel @Inject constructor(
     
     private val _showClearAllDialog = MutableStateFlow(false)
     val showClearAllDialog = _showClearAllDialog.asStateFlow()
-    
-    init {
-        loadCalendar()
-    }
-    
-    private fun loadCalendar() {
-        viewModelScope.launch {
-            val data = repository.getCalendarWithMonths(calendarId)
-            _calendarWithMonths.value = data
-        }
-    }
+
     
     fun changeMonth(delta: Int) {
         val current = _currentMonthIndex.value
-        val maxIndex = (_calendarWithMonths.value?.months?.size ?: 1) - 1
+        val maxIndex = (calendarWithMonths.value?.months?.size ?: 1) - 1
         val newIndex = (current + delta).coerceIn(0, maxIndex)
         _currentMonthIndex.value = newIndex
     }
@@ -73,7 +71,6 @@ class CalendarDetailViewModel @Inject constructor(
         viewModelScope.launch {
             repository.updateMultipleDaysCompleted(_selectedDayIds.value.toList(), true)
             clearSelection()
-            loadCalendar()
         }
     }
     
@@ -81,7 +78,6 @@ class CalendarDetailViewModel @Inject constructor(
         viewModelScope.launch {
             repository.updateMultipleDaysCompleted(_selectedDayIds.value.toList(), false)
             clearSelection()
-            loadCalendar()
         }
     }
     
@@ -97,14 +93,12 @@ class CalendarDetailViewModel @Inject constructor(
         viewModelScope.launch {
             repository.clearAllCompletedForCalendar(calendarId)
             _showClearAllDialog.value = false
-            loadCalendar()
         }
     }
     
     fun toggleDayCompleted(dayId: String, currentState: Boolean) {
         viewModelScope.launch {
             repository.updateDayCompleted(dayId, !currentState)
-            loadCalendar()
         }
     }
 }

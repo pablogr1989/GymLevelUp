@@ -39,7 +39,7 @@ fun ExerciseDetailScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val showDeleteHistoryDialog by viewModel.showDeleteHistoryDialog.collectAsState()
     val showDeleteEntryDialog by viewModel.showDeleteEntryDialog.collectAsState()
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -86,18 +86,18 @@ fun ExerciseDetailScreen(
                                 contentScale = ContentScale.Crop
                             )
                         }
-                        
+
                         Text(
                             text = ex.name,
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        
+
                         AssistChip(
                             onClick = {},
                             label = { Text(ex.muscleGroup.displayName) }
                         )
-                        
+
                         if (ex.description.isNotEmpty()) {
                             Text(
                                 text = ex.description,
@@ -107,7 +107,7 @@ fun ExerciseDetailScreen(
                         }
                     }
                 }
-                
+
                 // NOTAS
                 item {
                     Card(
@@ -133,15 +133,15 @@ fun ExerciseDetailScreen(
                                     color = Color.White
                                 )
                             }
-                            
+
                             OutlinedTextField(
                                 value = notes,
                                 onValueChange = viewModel::updateNotes,
-                                placeholder = { 
+                                placeholder = {
                                     Text(
                                         "Escribe observaciones sobre este ejercicio...",
                                         color = Color.Gray
-                                    ) 
+                                    )
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 minLines = 3,
@@ -156,7 +156,7 @@ fun ExerciseDetailScreen(
                         }
                     }
                 }
-                
+
                 // VALORES ACTUALES
                 item {
                     Card(
@@ -174,7 +174,7 @@ fun ExerciseDetailScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 color = Color.White
                             )
-                            
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -192,7 +192,7 @@ fun ExerciseDetailScreen(
                                         unfocusedTextColor = Color.White
                                     )
                                 )
-                                
+
                                 OutlinedTextField(
                                     value = reps,
                                     onValueChange = viewModel::updateReps,
@@ -207,7 +207,7 @@ fun ExerciseDetailScreen(
                                     )
                                 )
                             }
-                            
+
                             OutlinedTextField(
                                 value = weight,
                                 onValueChange = viewModel::updateWeight,
@@ -221,7 +221,7 @@ fun ExerciseDetailScreen(
                                     unfocusedTextColor = Color.White
                                 )
                             )
-                            
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -235,7 +235,7 @@ fun ExerciseDetailScreen(
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("Cancelar")
                                 }
-                                
+
                                 Button(
                                     onClick = viewModel::saveExerciseStats,
                                     modifier = Modifier.weight(1f),
@@ -260,7 +260,7 @@ fun ExerciseDetailScreen(
                         }
                     }
                 }
-                
+
                 // HISTORIAL
                 item {
                     Row(
@@ -277,7 +277,7 @@ fun ExerciseDetailScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        
+
                         if (history.isNotEmpty()) {
                             TextButton(
                                 onClick = viewModel::showDeleteHistoryDialog,
@@ -292,7 +292,7 @@ fun ExerciseDetailScreen(
                         }
                     }
                 }
-                
+
                 items(history) { entry ->
                     HistoryEntryCard(
                         entry = entry,
@@ -302,13 +302,13 @@ fun ExerciseDetailScreen(
             }
         }
     }
-    
-    // Diálogos
+
+    // DiÃ¡logos
     if (showDeleteHistoryDialog) {
         AlertDialog(
             onDismissRequest = viewModel::dismissDeleteHistoryDialog,
             title = { Text("Borrar todo el historial") },
-            text = { Text("¿Estás seguro? Esta acción no se puede deshacer.") },
+            text = { Text("Â¿EstÃ¡s seguro? Esta acciÃ³n no se puede deshacer.") },
             confirmButton = {
                 TextButton(
                     onClick = viewModel::deleteAllHistory,
@@ -326,12 +326,12 @@ fun ExerciseDetailScreen(
             }
         )
     }
-    
+
     showDeleteEntryDialog?.let { entry ->
         AlertDialog(
             onDismissRequest = viewModel::dismissDeleteEntryDialog,
             title = { Text("Eliminar entrada") },
-            text = { Text("¿Eliminar esta entrada del historial?") },
+            text = { Text("Â¿Eliminar esta entrada del historial?") },
             confirmButton = {
                 TextButton(
                     onClick = { viewModel.deleteHistoryEntry(entry) },
@@ -357,7 +357,7 @@ private fun HistoryEntryCard(
     onDelete: () -> Unit
 ) {
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
-    
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -379,13 +379,13 @@ private fun HistoryEntryCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "${entry.series} × ${entry.reps} — ${entry.weightKg} kg",
+                    text = "${entry.series} Ã— ${entry.reps} â€” ${entry.weightKg} kg",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White,
                     fontWeight = FontWeight.Medium
                 )
             }
-            
+
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,

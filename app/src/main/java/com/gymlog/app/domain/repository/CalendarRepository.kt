@@ -39,5 +39,7 @@ interface CalendarRepository {
     // Composite operations
     suspend fun getCalendarWithMonths(calendarId: String): CalendarWithMonths?
     suspend fun getMonthWithWeeks(monthId: String): MonthWithWeeks?
+    fun getCalendarWithMonthsFlow(calendarId: String): Flow<CalendarWithMonths?>
+
     suspend fun getWeekWithDays(weekId: String): WeekWithDays?
 }
