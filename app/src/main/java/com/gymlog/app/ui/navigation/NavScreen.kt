@@ -52,6 +52,19 @@ sealed class Screen(
             return "calendar_detail/$calendarId"
         }
     }
+
+    object DaySlotDetail : Screen(
+        route = "day_slot_detail/{daySlotId}",
+        arguments = listOf(
+            navArgument("daySlotId") {
+                type = NavType.StringType
+            }
+        )
+    ) {
+        fun createRoute(daySlotId: String): String {
+            return "day_slot_detail/$daySlotId"
+        }
+    }
     
     object CreateCalendar : Screen(route = "create_calendar")
     

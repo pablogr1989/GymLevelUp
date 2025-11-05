@@ -19,6 +19,7 @@ import com.gymlog.app.ui.screens.timer.TimerScreen
 import com.gymlog.app.ui.navigation.Screen
 import com.gymlog.app.ui.screens.calendars.CalendarDetailScreen
 import com.gymlog.app.ui.screens.calendars.CreateCalendarScreen
+import com.gymlog.app.ui.screens.calendars.DaySlotDetailScreen
 import com.gymlog.app.ui.screens.create.CreateExerciseScreen
 import com.gymlog.app.ui.screens.detail.ExerciseDetailScreen
 import com.gymlog.app.ui.screens.edit.EditExerciseScreen
@@ -41,13 +42,13 @@ fun MainAppScreen() {
         BottomNavItem.Calendars,
         BottomNavItem.Timer
     )
-    
+
     Scaffold(
         bottomBar = {
             NavigationBar {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
-                
+
                 items.forEach { item ->
                     NavigationBarItem(
                         icon = { Icon(item.icon, contentDescription = item.title) },
@@ -104,11 +105,29 @@ fun MainAppScreen() {
             }
 
             composable(
+                route = Screen.DaySlotDetail.route,
+                arguments = Screen.DaySlotDetail.arguments
+            ) {
+                DaySlotDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToExercise = { exerciseId ->
+                        navController.navigate(Screen.ExerciseDetail.createRoute(exerciseId))
+                    }
+                )
+            }
+
+            composable(
                 route = Screen.CalendarDetail.route,
                 arguments = Screen.CalendarDetail.arguments
             ) {
                 CalendarDetailScreen(
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToEdit = { daySlotId ->
+                        navController.navigate(Screen.DaySlotDetail.createRoute(daySlotId))
+                    },
+                    onNavigateToExercise = { exerciseId ->
+                        navController.navigate(Screen.ExerciseDetail.createRoute(exerciseId))
+                    }
                 )
             }
 
@@ -123,7 +142,7 @@ fun MainAppScreen() {
                     }
                 )
             }
-            
+
             composable(BottomNavItem.Calendars.route) {
                 CalendarsListScreen(
                     onNavigateToDetail = { calendarId ->
@@ -134,7 +153,7 @@ fun MainAppScreen() {
                     }
                 )
             }
-            
+
             composable(BottomNavItem.Timer.route) {
                 TimerScreen()
             }

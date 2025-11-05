@@ -38,7 +38,7 @@ object DatabaseModule {
         return Room.databaseBuilder(
             context,
             GymLogDatabase::class.java,
-            "gymlog_database_v4"  // Nueva versión con calendarios
+            "gymlevelup_database_v1"
         )
             .fallbackToDestructiveMigration()
             .addCallback(object : RoomDatabase.Callback() {
@@ -50,7 +50,7 @@ object DatabaseModule {
                         val database = Room.databaseBuilder(
                             context,
                             GymLogDatabase::class.java,
-                            "gymlog_database_v3"
+                            "gymlevelup_database_v1"
                         ).build()
                         android.util.Log.d("GymLogDB", "Starting prepopulation")
                         prepopulateDatabase(database)

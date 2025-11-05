@@ -27,6 +27,8 @@ import com.gymlog.app.ui.theme.AppColors
 @Composable
 fun CalendarDetailScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToEdit: (String) -> Unit,
+    onNavigateToExercise: (String) -> Unit = {},
     viewModel: CalendarDetailViewModel = hiltViewModel()
 ) {
     val calendarWithMonths by viewModel.calendarWithMonths.collectAsState()
@@ -86,7 +88,7 @@ fun CalendarDetailScreen(
                                 if (isSelectionMode) {
                                     viewModel.toggleDaySelection(daySlot.id)
                                 } else {
-                                    viewModel.toggleDayCompleted(daySlot.id, daySlot.completed)
+                                    onNavigateToEdit(daySlot.id)
                                 }
                             },
                             onDayLongPress = { daySlot ->
@@ -340,14 +342,16 @@ private fun MultiSelectControls(
 @DrawableRes
 private fun getCategoryIcon(category: DayCategory?): Int {
     return when (category) {
-        DayCategory.BICEPS -> com.gymlog.app.R.drawable/*.ic_biceps*/.ic_exercise_placeholder
-        DayCategory.LEGS -> com.gymlog.app.R.drawable/*.ic_piernas*/.ic_exercise_placeholder
-        DayCategory.GLUTES -> com.gymlog.app.R.drawable/*.ic_gluteos*/.ic_exercise_placeholder
+        DayCategory.BACK -> com.gymlog.app.R.drawable.ic_espalda
+        DayCategory.BICEPS -> com.gymlog.app.R.drawable.ic_biceps
+        DayCategory.LEGS -> com.gymlog.app.R.drawable.ic_pierna
+        DayCategory.GLUTES -> com.gymlog.app.R.drawable.ic_gluteos
         DayCategory.CHEST -> com.gymlog.app.R.drawable.ic_torso
-        DayCategory.TRICEPS -> com.gymlog.app.R.drawable/*.ic_triceps*/.ic_exercise_placeholder
-        DayCategory.SHOULDERS -> com.gymlog.app.R.drawable/*.ic_hombros*/.ic_exercise_placeholder
-        DayCategory.CARDIO -> com.gymlog.app.R.drawable/*.ic_cardio*/.ic_exercise_placeholder
-        DayCategory.REST -> com.gymlog.app.R.drawable/*.ic_party*/.ic_exercise_placeholder
+        DayCategory.TRICEPS -> com.gymlog.app.R.drawable.ic_triceps
+        DayCategory.SHOULDERS -> com.gymlog.app.R.drawable.ic_hombros
+        DayCategory.CARDIO -> com.gymlog.app.R.drawable.ic_cardio
+        DayCategory.REST -> com.gymlog.app.R.drawable.ic_rest
+        DayCategory.FULL_BODY -> com.gymlog.app.R.drawable.ic_fullbody
         else -> com.gymlog.app.R.drawable.ic_exercise_placeholder
     }
 }

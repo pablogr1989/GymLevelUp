@@ -30,21 +30,33 @@ fun MainScreen(
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedMuscleGroup by viewModel.selectedMuscleGroup.collectAsState()
     val showDeleteDialog by viewModel.showDeleteDialog.collectAsState()
-    
+
     // Preexpandir grupos comunes y usar remember para evitar recreación
-    var expandedGroups by remember { 
+    var expandedGroups by remember {
         mutableStateOf(setOf(MuscleGroup.LEGS, MuscleGroup.CHEST))
     }
-    
+
     // Cachear grupos visibles para evitar recalcular
     val visibleGroups = remember(exercises) {
         exercises.keys.sortedBy { it.ordinal }
     }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("GymLevelUp") },
+                title = {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("GymLevelUp")
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = viewModel::prepopulateDatabase) {
+                        Icon(Icons.Default.Info, contentDescription = "Repoblar base de datos")
+                    }
+                },
                 actions = {
                     IconButton(onClick = onNavigateToCreate) {
                         Icon(Icons.Default.Add, contentDescription = "Añadir ejercicio")
@@ -53,6 +65,7 @@ fun MainScreen(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
@@ -69,14 +82,14 @@ fun MainScreen(
                 onQueryChange = viewModel::updateSearchQuery,
                 modifier = Modifier.padding(16.dp)
             )
-            
+
             // Muscle group filter chips
             MuscleGroupFilterChips(
                 selectedGroup = selectedMuscleGroup,
                 onGroupSelected = viewModel::selectMuscleGroup,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
-            
+
             // Exercise list
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -99,7 +112,7 @@ fun MainScreen(
                                 }
                             )
                         }
-                        
+
                         if (expandedGroups.contains(group)) {
                             items(
                                 items = groupExercises,
@@ -118,7 +131,7 @@ fun MainScreen(
             }
         }
     }
-    
+
     // Delete confirmation dialog
     showDeleteDialog?.let { exercise ->
         AlertDialog(
@@ -296,7 +309,7 @@ private fun ExerciseCard(
                 ) {
                     if (exercise.currentSeries > 0 && exercise.currentReps > 0) {
                         Text(
-                            text = "${exercise.currentSeries} Ã— ${exercise.currentReps}",
+                            text = "${exercise.currentSeries} — ${exercise.currentReps}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

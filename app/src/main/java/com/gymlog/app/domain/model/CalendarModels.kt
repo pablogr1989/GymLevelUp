@@ -27,7 +27,7 @@ data class DaySlot(
     val weekId: String,
     val dayOfWeek: DayOfWeek,
     val categories: List<DayCategory> = emptyList(),
-    val selectedExerciseId: String? = null,
+    val selectedExerciseIds: List<String> = emptyList(),
     val completed: Boolean = false
 )
 

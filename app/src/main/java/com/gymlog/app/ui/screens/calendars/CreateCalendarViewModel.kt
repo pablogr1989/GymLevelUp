@@ -2,7 +2,6 @@ package com.gymlog.app.ui.screens.calendars
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.gymlog.app.data.local.entity.DayCategory
 import com.gymlog.app.domain.model.Calendar
 import com.gymlog.app.domain.model.Month
 import com.gymlog.app.domain.model.Week
@@ -100,7 +99,7 @@ class CreateCalendarViewModel @Inject constructor(
                             weekId = weekId,
                             dayOfWeek = dayOfWeek,
                             categories = emptyList(),
-                            selectedExerciseId = null,
+                            selectedExerciseIds = emptyList(),
                             completed = false
                         )
                         repository.insertDaySlot(daySlot)
