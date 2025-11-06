@@ -294,7 +294,7 @@ fun EditExerciseScreen(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    MuscleGroup.values().forEach { group ->
+                    MuscleGroup.entries.forEach { group ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()

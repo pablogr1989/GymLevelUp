@@ -1,5 +1,6 @@
 package com.gymlog.app.ui.screens.calendars
 
+import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -63,6 +64,7 @@ fun CalendarDetailScreen(
                     .padding(paddingValues)
             ) {
                 // Navigation between months
+                Log.d("CalendarScreen", "Mostrando mes: $currentMonthIndex")
                 MonthNavigation(
                     currentMonth = data.months.getOrNull(currentMonthIndex),
                     onPreviousMonth = { viewModel.changeMonth(-1) },
@@ -206,11 +208,13 @@ private fun MonthGrid(
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
-        modifier = modifier, // Usar el modifier aquí
+        modifier = modifier,
         contentPadding = PaddingValues(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        var i = 0
         items(monthWithWeeks.weeks) { weekWithDays ->
+            Log.d("CalendarScreen", "Mostrando semana: $i")
             WeekRow(
                 weekWithDays = weekWithDays,
                 isSelectionMode = isSelectionMode,
@@ -218,6 +222,7 @@ private fun MonthGrid(
                 onDayClick = onDayClick,
                 onDayLongPress = onDayLongPress
             )
+            i = i + 1
         }
     }
 }
@@ -235,6 +240,7 @@ private fun WeekRow(
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         weekWithDays.days.forEach { daySlot ->
+            Log.d("CalendarScreen", "Mostrando dia: ${daySlot.dayOfWeek.displayName}")
             DayBox(
                 daySlot = daySlot,
                 isSelectionMode = isSelectionMode,

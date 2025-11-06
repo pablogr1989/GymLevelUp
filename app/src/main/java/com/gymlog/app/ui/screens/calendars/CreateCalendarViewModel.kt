@@ -1,5 +1,6 @@
 package com.gymlog.app.ui.screens.calendars
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gymlog.app.domain.model.Calendar
@@ -93,7 +94,7 @@ class CreateCalendarViewModel @Inject constructor(
                     repository.insertWeek(week)
 
                     // Crear 7 días por semana
-                    DayOfWeek.values().forEach { dayOfWeek ->
+                    DayOfWeek.entries.forEach { dayOfWeek ->
                         val daySlot = DaySlot(
                             id = UUID.randomUUID().toString(),
                             weekId = weekId,

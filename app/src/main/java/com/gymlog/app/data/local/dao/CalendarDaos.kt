@@ -75,7 +75,19 @@ interface WeekDao {
 
 @Dao
 interface DaySlotDao {
-    @Query("SELECT * FROM day_slots WHERE weekId = :weekId ORDER BY dayOfWeek ASC")
+    @Query("""
+    SELECT * FROM day_slots WHERE weekId = :weekId 
+    ORDER BY 
+    CASE dayOfWeek
+        WHEN 'MONDAY' THEN 1
+        WHEN 'TUESDAY' THEN 2  
+        WHEN 'WEDNESDAY' THEN 3
+        WHEN 'THURSDAY' THEN 4
+        WHEN 'FRIDAY' THEN 5
+        WHEN 'SATURDAY' THEN 6
+        WHEN 'SUNDAY' THEN 7
+    END ASC
+""")
     fun getDaysForWeek(weekId: String): Flow<List<DaySlotEntity>>
 
     @Query("SELECT * FROM day_slots WHERE id = :dayId")

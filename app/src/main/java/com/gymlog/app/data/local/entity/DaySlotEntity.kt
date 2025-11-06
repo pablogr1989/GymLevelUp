@@ -39,7 +39,7 @@ enum class DayOfWeek(val displayName: String, val dayNumber: Int) {
 
     companion object {
         fun fromDayNumber(number: Int): DayOfWeek {
-            return values().find { it.dayNumber == number } ?: MONDAY
+            return entries.find { it.dayNumber == number } ?: MONDAY
         }
     }
 }
@@ -58,7 +58,7 @@ enum class DayCategory(val displayName: String, val abbreviation: String) {
 
     companion object {
         fun fromDisplayName(name: String): DayCategory? {
-            return values().find { it.displayName == name }
+            return entries.find { it.displayName == name }
         }
     }
 }
