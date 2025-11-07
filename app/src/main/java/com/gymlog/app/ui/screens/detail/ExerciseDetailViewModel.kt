@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import javax.inject.Inject
+import kotlin.text.ifEmpty
 
 @HiltViewModel
 class ExerciseDetailViewModel @Inject constructor(
@@ -33,7 +34,7 @@ class ExerciseDetailViewModel @Inject constructor(
     private val _weight = MutableStateFlow("")
     val weight = _weight.asStateFlow()
 
-    private val _notes = MutableStateFlow("")
+    private val _notes = MutableStateFlow(" ")
     val notes = _notes.asStateFlow()
 
     private val _showSaveSuccess = MutableStateFlow(false)
@@ -68,7 +69,8 @@ class ExerciseDetailViewModel @Inject constructor(
                 _series.value = if (exercise.currentSeries > 0) exercise.currentSeries.toString() else "0"
                 _reps.value = if (exercise.currentReps > 0) exercise.currentReps.toString() else "0"
                 _weight.value = if (exercise.currentWeightKg > 0) exercise.currentWeightKg.toString() else "0"
-                _notes.value = exercise.notes
+                _notes.value = exercise.notes.ifEmpty { " " }
+
             }
             _isLoading.value = false
         }
@@ -99,7 +101,7 @@ class ExerciseDetailViewModel @Inject constructor(
     }
 
     fun updateNotes(value: String) {
-        _notes.value = value
+        _notes.value = value.ifEmpty { " " }
     }
 
     fun saveExerciseStats() {
@@ -108,7 +110,7 @@ class ExerciseDetailViewModel @Inject constructor(
             val seriesValue = _series.value.toIntOrNull() ?: return@launch
             val repsValue = _reps.value.toIntOrNull() ?: return@launch
             val weightValue = _weight.value.toFloatOrNull() ?: 0f
-            val notesValue = _notes.value
+            val notesValue = _notes.value.ifEmpty { " " }
 
             _isLoading.value = true
 
@@ -199,6 +201,6 @@ class ExerciseDetailViewModel @Inject constructor(
         _series.value = if (currentExercise.currentSeries > 0) currentExercise.currentSeries.toString() else "0"
         _reps.value = if (currentExercise.currentReps > 0) currentExercise.currentReps.toString() else "0"
         _weight.value = if (currentExercise.currentWeightKg > 0) currentExercise.currentWeightKg.toString() else "0"
-        _notes.value = currentExercise.notes
+        _notes.value = currentExercise.notes.ifEmpty { " " }
     }
 }
