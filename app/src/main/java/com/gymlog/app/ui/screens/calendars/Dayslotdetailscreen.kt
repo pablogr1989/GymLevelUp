@@ -2,6 +2,8 @@ package com.gymlog.app.ui.screens.calendars
 
 import android.util.Log
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -443,8 +445,7 @@ private fun DraggableExerciseList(
 
     // Guardar posiciones Y de cada card
     val cardPositions = remember { mutableStateMapOf<Int, Float>() }
-    var draggedCardStartY by remember { mutableStateOf(0f) }
-    var currentDragY by remember { mutableStateOf(0f) }
+    var currentDragY by remember { mutableFloatStateOf(0f) }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -461,7 +462,6 @@ private fun DraggableExerciseList(
                 onDragStart = { positionY ->
                     draggedIndex = index
                     targetIndex = index
-                    draggedCardStartY = positionY
                     currentDragY = positionY
                 },
                 onDragEnd = {
@@ -474,7 +474,6 @@ private fun DraggableExerciseList(
                     }
                     draggedIndex = null
                     targetIndex = null
-                    draggedCardStartY = 0f
                     currentDragY = 0f
                 },
                 onDrag = { dragAmount ->
@@ -527,8 +526,8 @@ private fun DraggableExerciseCard(
     onDrag: (Float) -> Unit,
     onPositionCalculated: (Float) -> Unit
 ) {
-    var localDragOffset by remember { mutableStateOf(0f) }
-    var cardPositionY by remember { mutableStateOf(0f) }
+    var localDragOffset by remember { mutableFloatStateOf(0f) }
+    var cardPositionY by remember { mutableFloatStateOf(0f) }
     val density = LocalDensity.current
 
     val backgroundColor = when {
@@ -544,12 +543,11 @@ private fun DraggableExerciseCard(
             .zIndex(if (isDragged) 10f else 0f)
             .offset(y = with(density) { localDragOffset.toDp() })
             .onGloballyPositioned { coordinates ->
-                // Capturar posición Y del card
                 cardPositionY = coordinates.positionInParent().y
                 onPositionCalculated(cardPositionY)
             }
             .pointerInput(exercise.id) {
-                detectDragGestures(
+                detectDragGesturesAfterLongPress(
                     onDragStart = {
                         onDragStart(cardPositionY)
                         localDragOffset = 0f
