@@ -218,18 +218,12 @@ class DaySlotDetailViewModel @Inject constructor(
 
     // Función para reordenar ejercicios
     fun moveExercise(fromIndex: Int, toIndex: Int) {
-        Log.d("Drag", "MoveExercise Start: From: $fromIndex To: $toIndex")
         val currentList = _selectedExerciseIds.value.toMutableList()
-        currentList.forEachIndexed { item, index ->
-            Log.d("Drag", "MoveExercise antes: Item: $item Index: $index")
-        }
+
         if (fromIndex in currentList.indices && toIndex in currentList.indices) {
             val item = currentList.removeAt(fromIndex)
             currentList.add(toIndex, item)
             _selectedExerciseIds.value = currentList
-        }
-        currentList.forEachIndexed { item, index ->
-            Log.d("Drag", "MoveExercise despues: Item: $item Index: $index")
         }
     }
 
@@ -248,9 +242,9 @@ class DaySlotDetailViewModel @Inject constructor(
             DayCategory.BICEPS -> MuscleGroup.BICEPS
             DayCategory.TRICEPS -> MuscleGroup.TRICEPS
             DayCategory.SHOULDERS -> MuscleGroup.SHOULDERS
-            DayCategory.FULL_BODY -> null // No hay equivalente exacto
-            DayCategory.CARDIO -> null // No hay ejercicios de cardio en la lista
-            DayCategory.REST -> null // DÃ­a de descanso
+            DayCategory.FULL_BODY -> null
+            DayCategory.CARDIO -> null
+            DayCategory.REST -> null
         }
     }
 }

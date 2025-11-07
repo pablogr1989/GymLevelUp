@@ -1,7 +1,9 @@
 package com.gymlog.app.ui.screens.training
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -9,9 +11,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.gymlog.app.domain.model.Exercise
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -320,9 +325,20 @@ private fun CurrentExerciseCard(
         ) {
             if (exercise != null) {
                 // Imagen del ejercicio
-                ExerciseImage(
+                /*ExerciseImage(
                     imageUri = exercise.imageUri,
                     enabled = isTrainingActive
+                )*/
+
+                AsyncImage(
+                    model = exercise.imageUri,
+                    contentDescription = exercise.name,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentScale = ContentScale.Crop
                 )
 
                 // Nombre del ejercicio
