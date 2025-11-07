@@ -1,5 +1,6 @@
 package com.gymlog.app.ui.screens.calendars
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -46,7 +47,11 @@ class DaySlotDetailViewModel @Inject constructor(
         allExercises,
         selectedExerciseIds
     ) { exercises, ids ->
-        exercises.filter { exercise -> ids.contains(exercise.id) }
+        // Crear un mapa para búsqueda rápida
+        val exerciseMap = exercises.associateBy { it.id }
+
+        // Mantener el orden de selectedExerciseIds
+        ids.mapNotNull { id -> exerciseMap[id] }
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
@@ -62,7 +67,17 @@ class DaySlotDetailViewModel @Inject constructor(
     private val _navigateBack = MutableStateFlow(false)
     val navigateBack = _navigateBack.asStateFlow()
 
-    // Filtrar ejercicios por categorías seleccionadas
+    private val _navigateToTraining = MutableStateFlow(false)
+    val navigateToTraining = _navigateToTraining.asStateFlow()
+
+    // Estado de expansión de secciones (se mantiene durante la sesión)
+    private val _isCategoriesExpanded = MutableStateFlow(true)
+    val isCategoriesExpanded = _isCategoriesExpanded.asStateFlow()
+
+    private val _isExercisesExpanded = MutableStateFlow(true)
+    val isExercisesExpanded = _isExercisesExpanded.asStateFlow()
+
+    // Filtrar ejercicios por categorÃ­as seleccionadas
     val filteredExercises: StateFlow<List<Exercise>> = combine(
         allExercises,
         selectedCategories
@@ -78,7 +93,7 @@ class DaySlotDetailViewModel @Inject constructor(
             else if (categories.all { it == DayCategory.CARDIO || it == DayCategory.REST }) {
                 emptyList()
             }
-            // Filtrar por categorías normales
+            // Filtrar por categorÃ­as normales
             else {
                 exercises.filter { exercise ->
                     val muscleGroups = categories.mapNotNull { category ->
@@ -127,7 +142,7 @@ class DaySlotDetailViewModel @Inject constructor(
             if (newCategories.all { it == DayCategory.CARDIO || it == DayCategory.REST }) {
                 _selectedExerciseIds.value = emptyList()
             } else {
-                // Si hay otras categorías, verificar compatibilidad de ejercicios
+                // Si hay otras categorÃ­as, verificar compatibilidad de ejercicios
                 val compatibleExercises = if (newCategories.contains(DayCategory.FULL_BODY)) {
                     allExercises.value
                 } else {
@@ -189,6 +204,38 @@ class DaySlotDetailViewModel @Inject constructor(
 
     fun resetNavigation() {
         _navigateBack.value = false
+        _navigateToTraining.value = false
+    }
+
+    // Funciones para manejar expansión de secciones
+    fun toggleCategoriesExpansion() {
+        _isCategoriesExpanded.value = !_isCategoriesExpanded.value
+    }
+
+    fun toggleExercisesExpansion() {
+        _isExercisesExpanded.value = !_isExercisesExpanded.value
+    }
+
+    // Función para reordenar ejercicios
+    fun moveExercise(fromIndex: Int, toIndex: Int) {
+        Log.d("Drag", "MoveExercise Start: From: $fromIndex To: $toIndex")
+        val currentList = _selectedExerciseIds.value.toMutableList()
+        currentList.forEachIndexed { item, index ->
+            Log.d("Drag", "MoveExercise antes: Item: $item Index: $index")
+        }
+        if (fromIndex in currentList.indices && toIndex in currentList.indices) {
+            val item = currentList.removeAt(fromIndex)
+            currentList.add(toIndex, item)
+            _selectedExerciseIds.value = currentList
+        }
+        currentList.forEachIndexed { item, index ->
+            Log.d("Drag", "MoveExercise despues: Item: $item Index: $index")
+        }
+    }
+
+    // Función para navegar al modo entrenamiento
+    fun startTraining() {
+        _navigateToTraining.value = true
     }
 
     // Mapeo de DayCategory a MuscleGroup
@@ -203,7 +250,7 @@ class DaySlotDetailViewModel @Inject constructor(
             DayCategory.SHOULDERS -> MuscleGroup.SHOULDERS
             DayCategory.FULL_BODY -> null // No hay equivalente exacto
             DayCategory.CARDIO -> null // No hay ejercicios de cardio en la lista
-            DayCategory.REST -> null // Día de descanso
+            DayCategory.REST -> null // DÃ­a de descanso
         }
     }
 }

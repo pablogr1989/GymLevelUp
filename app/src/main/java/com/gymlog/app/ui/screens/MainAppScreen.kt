@@ -23,6 +23,7 @@ import com.gymlog.app.ui.screens.calendars.DaySlotDetailScreen
 import com.gymlog.app.ui.screens.create.CreateExerciseScreen
 import com.gymlog.app.ui.screens.detail.ExerciseDetailScreen
 import com.gymlog.app.ui.screens.edit.EditExerciseScreen
+import com.gymlog.app.ui.screens.training.TrainingModeScreen
 
 sealed class BottomNavItem(
     val route: String,
@@ -31,7 +32,7 @@ sealed class BottomNavItem(
 ) {
     object Exercises : BottomNavItem("exercises_tab", "Ejercicios", Icons.Default.FitnessCenter)
     object Calendars : BottomNavItem("calendars_tab", "Calendarios", Icons.Default.CalendarMonth)
-    object Timer : BottomNavItem("timer_tab", "Cronómetro", Icons.Default.Timer)
+    object Timer : BottomNavItem("timer_tab", "CronÃ³metro", Icons.Default.Timer)
 }
 
 @Composable
@@ -112,7 +113,19 @@ fun MainAppScreen() {
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToExercise = { exerciseId ->
                         navController.navigate(Screen.ExerciseDetail.createRoute(exerciseId))
+                    },
+                    onNavigateToTraining = { daySlotId ->
+                        navController.navigate(Screen.TrainingMode.createRoute(daySlotId))
                     }
+                )
+            }
+
+            composable(
+                route = Screen.TrainingMode.route,
+                arguments = Screen.TrainingMode.arguments
+            ) {
+                TrainingModeScreen(
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 

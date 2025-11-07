@@ -15,6 +15,7 @@ import com.gymlog.app.data.local.dao.WeekDao
 import com.gymlog.app.data.local.entity.ExerciseEntity
 import com.gymlog.app.data.local.entity.ExerciseHistoryEntity
 import com.gymlog.app.data.local.entity.MuscleGroup
+import com.gymlog.app.util.ImageStorageHelper
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,7 +26,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import javax.inject.Singleton
-
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
@@ -93,6 +93,15 @@ object DatabaseModule {
     fun provideDaySlotDao(database: GymLogDatabase): DaySlotDao
     {
         return database.daySlotDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideImageStorageHelper(
+        @ApplicationContext context: Context
+    ): ImageStorageHelper
+    {
+        return ImageStorageHelper(context)
     }
 
     private suspend fun prepopulateDatabase(database: GymLogDatabase) {

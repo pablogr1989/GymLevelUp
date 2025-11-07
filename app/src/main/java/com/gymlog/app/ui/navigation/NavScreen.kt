@@ -9,7 +9,7 @@ sealed class Screen(
     val arguments: List<NamedNavArgument> = emptyList()
 ) {
     object Main : Screen(route = "main")
-    
+
     object ExerciseDetail : Screen(
         route = "exercise_detail/{exerciseId}",
         arguments = listOf(
@@ -22,7 +22,7 @@ sealed class Screen(
             return "exercise_detail/$exerciseId"
         }
     }
-    
+
     object EditExercise : Screen(
         route = "edit_exercise/{exerciseId}",
         arguments = listOf(
@@ -35,11 +35,11 @@ sealed class Screen(
             return "edit_exercise/$exerciseId"
         }
     }
-    
+
     object CreateExercise : Screen(route = "create_exercise")
-    
+
     object CalendarsList : Screen(route = "calendars_list")
-    
+
     object CalendarDetail : Screen(
         route = "calendar_detail/{calendarId}",
         arguments = listOf(
@@ -65,8 +65,21 @@ sealed class Screen(
             return "day_slot_detail/$daySlotId"
         }
     }
-    
+
     object CreateCalendar : Screen(route = "create_calendar")
-    
+
+    object TrainingMode : Screen(
+        route = "training_mode/{daySlotId}",
+        arguments = listOf(
+            navArgument("daySlotId") {
+                type = NavType.StringType
+            }
+        )
+    ) {
+        fun createRoute(daySlotId: String): String {
+            return "training_mode/$daySlotId"
+        }
+    }
+
     object Timer : Screen(route = "timer")
 }
