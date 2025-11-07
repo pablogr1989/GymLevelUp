@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -344,7 +345,7 @@ private fun CurrentExerciseCard(
                 // Nombre del ejercicio
                 Text(
                     text = exercise.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
 
@@ -394,11 +395,24 @@ private fun CurrentExerciseCard(
                     value = currentNotes,
                     onValueChange = onNotesChange,
                     label = { Text("Notas") },
+                    placeholder = {
+                        Text(
+                            "Observaciones sobre este ejercicio...",
+                            color = Color.Gray
+                        )
+                    },
                     enabled = isTrainingActive,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp),
-                    maxLines = 4
+                    minLines = 3,
+                    maxLines = 6,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color(0xFF0A84FF),
+                        unfocusedBorderColor = Color.Gray
+                    )
                 )
 
                 // Serie actual y botón Iniciar/Parar Serie
