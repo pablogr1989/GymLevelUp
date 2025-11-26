@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.gymlog.app.domain.model.Exercise
+import com.gymlog.app.util.RequestNotificationPermission
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,6 +27,7 @@ fun TrainingModeScreen(
     onNavigateBack: () -> Unit,
     viewModel: TrainingModeViewModel = hiltViewModel()
 ) {
+    RequestNotificationPermission()
     val daySlot by viewModel.daySlot.collectAsState()
     val exercises by viewModel.exercises.collectAsState()
     val isTrainingActive by viewModel.isTrainingActive.collectAsState()
@@ -504,44 +506,6 @@ private fun CurrentExerciseCard(
             } else {
                 Text(
                     text = "No hay ejercicio seleccionado",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ExerciseImage(
-    imageUri: String?,
-    enabled: Boolean
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(200.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (enabled) {
-                MaterialTheme.colorScheme.surface
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-            }
-        )
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            if (imageUri != null) {
-                // TODO: Cargar imagen real con Coil o similar
-                Text(
-                    text = "Imagen del ejercicio",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            } else {
-                Text(
-                    text = "Placeholder - Sin imagen",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

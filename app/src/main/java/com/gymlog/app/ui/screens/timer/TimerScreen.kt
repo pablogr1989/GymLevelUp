@@ -1,7 +1,6 @@
 package com.gymlog.app.ui.screens.timer
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -9,7 +8,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,11 +18,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
+import com.gymlog.app.util.RequestNotificationPermission
 
 @Composable
 fun TimerScreen(
     viewModel: TimerViewModel = hiltViewModel()
 ) {
+    RequestNotificationPermission()
     val hours by viewModel.hours.collectAsState()
     val minutes by viewModel.minutes.collectAsState()
     val seconds by viewModel.seconds.collectAsState()
@@ -126,8 +126,8 @@ private fun NumberPicker(
     enabled: Boolean,
     modifier: Modifier = Modifier
 ) {
-    var localValue by remember(value) { mutableStateOf(value) }
-    var accumulatedDrag by remember { mutableStateOf(0f) }
+    var localValue by remember(value) { mutableIntStateOf(value) }
+    var accumulatedDrag by remember { mutableFloatStateOf(0f) }
 
     Box(
         modifier = modifier

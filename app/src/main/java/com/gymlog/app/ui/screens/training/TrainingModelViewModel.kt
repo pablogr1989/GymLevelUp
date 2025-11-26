@@ -1,5 +1,10 @@
 package com.gymlog.app.ui.screens.training
 
+import android.app.AlarmManager
+import android.app.Application
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,6 +12,8 @@ import com.gymlog.app.domain.model.DaySlot
 import com.gymlog.app.domain.model.Exercise
 import com.gymlog.app.domain.repository.CalendarRepository
 import com.gymlog.app.domain.repository.ExerciseRepository
+import com.gymlog.app.ui.screens.timer.AlarmReceiver
+import com.gymlog.app.ui.screens.timer.TimerForegroundService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +35,8 @@ enum class SeriesAction {
 class TrainingModeViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val calendarRepository: CalendarRepository,
-    private val exerciseRepository: ExerciseRepository
+    private val exerciseRepository: ExerciseRepository,
+    private val application: Application
 ) : ViewModel() {
 
     private val daySlotId: String = checkNotNull(savedStateHandle["daySlotId"])
@@ -250,6 +258,7 @@ class TrainingModeViewModel @Inject constructor(
         _isTimerRunning.value = false
         _timerSeconds.value = 0
         timerJob?.cancel()
+        stopAlarmService()
 
         // Habilitar botón de serie si estaba deshabilitado
         if (!_isSeriesButtonEnabled.value) {
@@ -262,6 +271,51 @@ class TrainingModeViewModel @Inject constructor(
 
         // Habilitar botón de serie
         _isSeriesButtonEnabled.value = true
+
+        // Iniciar alarma
+        startAlarmService()
+    }
+
+    private fun startAlarmService() {
+        android.util.Log.d("TimerAlarm", "Programando alarma con AlarmManager (Training)")
+
+        val alarmManager = application.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(application, AlarmReceiver::class.java).apply {
+            putExtra(TimerForegroundService.EXTRA_TIMER_TYPE, TimerForegroundService.TIMER_TYPE_TRAINING)
+        }
+
+        val pendingIntent = PendingIntent.getBroadcast(
+            application,
+            1002, // ID diferente para training
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Alarma inmediata que funciona incluso en Doze
+        alarmManager.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP,
+            System.currentTimeMillis() + 100, // +100ms para asegurar que dispara
+            pendingIntent
+        )
+    }
+
+    private fun stopAlarmService() {
+        // Cancelar alarma pendiente
+        val alarmManager = application.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(application, AlarmReceiver::class.java)
+        val pendingIntent = PendingIntent.getBroadcast(
+            application,
+            1002,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.cancel(pendingIntent)
+
+        // Detener servicio si está corriendo
+        val stopIntent = Intent(application, TimerForegroundService::class.java).apply {
+            action = TimerForegroundService.ACTION_STOP
+        }
+        application.startService(stopIntent)
     }
 
     // ============ GUARDAR CAMBIOS ============
@@ -300,5 +354,11 @@ class TrainingModeViewModel @Inject constructor(
             )
             exerciseRepository.insertHistory(history)
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        timerJob?.cancel()
+        stopAlarmService()
     }
 }

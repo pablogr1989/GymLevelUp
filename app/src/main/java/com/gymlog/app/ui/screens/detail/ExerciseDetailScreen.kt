@@ -308,7 +308,7 @@ fun ExerciseDetailScreen(
         AlertDialog(
             onDismissRequest = viewModel::dismissDeleteHistoryDialog,
             title = { Text("Borrar todo el historial") },
-            text = { Text("Â¿EstÃ¡s seguro? Esta acciÃ³n no se puede deshacer.") },
+            text = { Text("¿Estas seguro? Esta accion no se puede deshacer.") },
             confirmButton = {
                 TextButton(
                     onClick = viewModel::deleteAllHistory,
@@ -331,7 +331,7 @@ fun ExerciseDetailScreen(
         AlertDialog(
             onDismissRequest = viewModel::dismissDeleteEntryDialog,
             title = { Text("Eliminar entrada") },
-            text = { Text("Â¿Eliminar esta entrada del historial?") },
+            text = { Text("¿Estas seguro de eliminar esta entrada del historial?") },
             confirmButton = {
                 TextButton(
                     onClick = { viewModel.deleteHistoryEntry(entry) },
@@ -379,7 +379,7 @@ private fun HistoryEntryCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "${entry.series} Ã— ${entry.reps} â€” ${entry.weightKg} kg",
+                    text = "${entry.series} x ${entry.reps} - ${entry.weightKg} kg",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White,
                     fontWeight = FontWeight.Medium

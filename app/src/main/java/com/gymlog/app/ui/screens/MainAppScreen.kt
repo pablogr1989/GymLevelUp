@@ -32,7 +32,7 @@ sealed class BottomNavItem(
 ) {
     object Exercises : BottomNavItem("exercises_tab", "Ejercicios", Icons.Default.FitnessCenter)
     object Calendars : BottomNavItem("calendars_tab", "Calendarios", Icons.Default.CalendarMonth)
-    object Timer : BottomNavItem("timer_tab", "CronÃ³metro", Icons.Default.Timer)
+    object Timer : BottomNavItem("timer_tab", "Cronometro", Icons.Default.Timer)
 }
 
 @Composable

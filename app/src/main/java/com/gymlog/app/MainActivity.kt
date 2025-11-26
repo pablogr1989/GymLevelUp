@@ -8,6 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.gymlog.app.ui.screens.MainAppScreen
+import com.gymlog.app.ui.screens.timer.TimerNotificationHelper
 import com.gymlog.app.ui.theme.GymLogTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -15,6 +16,7 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        TimerNotificationHelper.createNotificationChannel(this)
         setContent {
             GymLogTheme {
                 Surface(
