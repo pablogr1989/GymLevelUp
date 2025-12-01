@@ -2,7 +2,7 @@ package com.gymlog.app.util
 
 import android.content.Context
 import android.net.Uri
-import android.os.Environment
+import android.util.Log
 import com.gymlog.app.data.backup.BackupData
 import com.gymlog.app.data.local.GymLogDatabase
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -11,14 +11,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import java.io.File
-import java.io.FileWriter
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 import androidx.room.withTransaction
+import java.io.OutputStreamWriter
 
 @Singleton
 class BackupManager @Inject constructor(
@@ -45,10 +41,11 @@ class BackupManager @Inject constructor(
 
         val jsonString = json.encodeToString(allData)
 
+        Log.d("BackupManager", jsonString.toString())
+
         context.contentResolver.openOutputStream(destinationUri)?.use { outputStream ->
-            outputStream.bufferedWriter().use { writer ->
-                writer.write(jsonString)
-            }
+            val utf8Bytes = jsonString.toByteArray(Charsets.UTF_8)
+            outputStream.write(utf8Bytes)
         } ?: throw IllegalStateException("No se pudo abrir el stream de escritura para el archivo seleccionado.")
     }
 

@@ -140,7 +140,7 @@ class ExerciseDetailViewModel @Inject constructor(
                 // Actualizar changeLogText
                 val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
                 val timestamp = dateFormat.format(Date())
-                val newLogEntry = "$timestamp â€” $seriesValue series Ã— $repsValue reps â€” $weightValue kg"
+                val newLogEntry = "$timestamp - $seriesValue series x $repsValue reps - $weightValue kg"
                 val updatedChangeLog = if (currentExercise.changeLogText.isEmpty()) {
                     newLogEntry
                 } else {
