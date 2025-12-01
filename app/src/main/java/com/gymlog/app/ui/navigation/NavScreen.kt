@@ -82,4 +82,7 @@ sealed class Screen(
     }
 
     object Timer : Screen(route = "timer")
+
+    object Backup : Screen(route = "backup")
+
 }

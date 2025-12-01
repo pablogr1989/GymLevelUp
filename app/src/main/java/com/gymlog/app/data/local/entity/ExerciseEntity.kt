@@ -1,10 +1,11 @@
+@file:OptIn(kotlinx.serialization.InternalSerializationApi::class)
 package com.gymlog.app.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
-
+import kotlinx.serialization.Serializable
 @Entity(
     tableName = "exercises",
     indices = [
@@ -13,6 +14,7 @@ import java.util.UUID
         Index(value = ["createdAt"])
     ]
 )
+@Serializable
 data class ExerciseEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),

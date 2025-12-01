@@ -26,6 +26,7 @@ import com.gymlog.app.data.local.entity.DayCategory
 fun MainScreen(
     onNavigateToDetail: (String) -> Unit,
     onNavigateToCreate: () -> Unit,
+    onNavigateToBackup: () -> Unit,
     viewModel: MainViewModel = hiltViewModel()
 ) {
     val exercises by viewModel.exercises.collectAsState()
@@ -54,12 +55,15 @@ fun MainScreen(
                         Text("GymLevelUp")
                     }
                 },
-                navigationIcon = {
+                /*navigationIcon = {
                     IconButton(onClick = viewModel::prepopulateDatabase) {
                         Icon(Icons.Default.Info, contentDescription = "Repoblar base de datos")
                     }
-                },
+                },*/
                 actions = {
+                    IconButton(onClick = onNavigateToBackup) {
+                        Icon(Icons.Default.UploadFile, contentDescription = "Copia de Seguridad")
+                    }
                     IconButton(onClick = onNavigateToCreate) {
                         Icon(Icons.Default.Add, contentDescription = "Añadir ejercicio")
                     }

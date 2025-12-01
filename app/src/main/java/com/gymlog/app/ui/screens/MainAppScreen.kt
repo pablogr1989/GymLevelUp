@@ -17,6 +17,7 @@ import com.gymlog.app.ui.screens.calendars.CalendarsListScreen
 import com.gymlog.app.ui.screens.main.MainScreen
 import com.gymlog.app.ui.screens.timer.TimerScreen
 import com.gymlog.app.ui.navigation.Screen
+import com.gymlog.app.ui.screens.backup.BackupScreen
 import com.gymlog.app.ui.screens.calendars.CalendarDetailScreen
 import com.gymlog.app.ui.screens.calendars.CreateCalendarScreen
 import com.gymlog.app.ui.screens.calendars.DaySlotDetailScreen
@@ -152,6 +153,9 @@ fun MainAppScreen() {
                     },
                     onNavigateToCreate = {
                         navController.navigate(Screen.CreateExercise.route)
+                    },
+                    onNavigateToBackup = {
+                        navController.navigate(Screen.Backup.route)
                     }
                 )
             }
@@ -169,6 +173,12 @@ fun MainAppScreen() {
 
             composable(BottomNavItem.Timer.route) {
                 TimerScreen()
+            }
+
+            composable(Screen.Backup.route) {
+                BackupScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
         }
     }

@@ -26,6 +26,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import javax.inject.Singleton
+import com.gymlog.app.util.BackupManager
+
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {

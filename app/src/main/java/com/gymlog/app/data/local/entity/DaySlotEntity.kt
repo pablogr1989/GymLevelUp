@@ -1,3 +1,4 @@
+@file:OptIn(kotlinx.serialization.InternalSerializationApi::class)
 package com.gymlog.app.data.local.entity
 
 import androidx.room.Entity
@@ -5,6 +6,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
+import kotlinx.serialization.Serializable
 
 @Entity(
     tableName = "day_slots",
@@ -18,6 +20,7 @@ import java.util.UUID
     ],
     indices = [Index("weekId"), Index("dayOfWeek")]
 )
+@Serializable
 data class DaySlotEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
@@ -28,6 +31,7 @@ data class DaySlotEntity(
     val completed: Boolean = false
 )
 
+@Serializable
 enum class DayOfWeek(val displayName: String, val dayNumber: Int) {
     MONDAY("Lunes", 1),
     TUESDAY("Martes", 2),
@@ -43,7 +47,7 @@ enum class DayOfWeek(val displayName: String, val dayNumber: Int) {
         }
     }
 }
-
+@Serializable
 enum class DayCategory(val displayName: String, val abbreviation: String) {
     FULL_BODY("Full Body", "FB"),
     CHEST("Torso", "TO"),

@@ -50,6 +50,9 @@ interface MonthDao {
 
     @Query("DELETE FROM months")
     suspend fun deleteAllMonths()
+
+    @Query("SELECT * FROM months")
+    fun getAllMonths(): Flow<List<MonthEntity>>
 }
 
 @Dao
@@ -71,6 +74,9 @@ interface WeekDao {
 
     @Query("DELETE FROM weeks")
     suspend fun deleteAllWeeks()
+
+    @Query("SELECT * FROM weeks")
+    fun getAllWeeks(): Flow<List<WeekEntity>>
 }
 
 @Dao
@@ -125,4 +131,7 @@ interface DaySlotDao {
         ORDER BY months.monthNumber, weeks.weekNumber, day_slots.dayOfWeek
     """)
     fun getDaysForCalendar(calendarId: String): Flow<List<DaySlotEntity>>
+
+    @Query("SELECT * FROM day_slots")
+    fun getAllDaySlots(): Flow<List<DaySlotEntity>>
 }
