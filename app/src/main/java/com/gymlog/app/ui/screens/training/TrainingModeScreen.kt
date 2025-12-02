@@ -1,12 +1,18 @@
 package com.gymlog.app.ui.screens.training
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowRight
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,10 +21,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.gymlog.app.domain.model.Exercise
+import com.gymlog.app.domain.model.Set
 import com.gymlog.app.util.RequestNotificationPermission
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,27 +36,38 @@ fun TrainingModeScreen(
     viewModel: TrainingModeViewModel = hiltViewModel()
 ) {
     RequestNotificationPermission()
-    val daySlot by viewModel.daySlot.collectAsState()
-    val exercises by viewModel.exercises.collectAsState()
-    val isTrainingActive by viewModel.isTrainingActive.collectAsState()
-    val currentExerciseIndex by viewModel.currentExerciseIndex.collectAsState()
-    val currentSeries by viewModel.currentSeries.collectAsState()
-    val currentWeight by viewModel.currentWeight.collectAsState()
-    val currentNotes by viewModel.currentNotes.collectAsState()
-    val timerSeconds by viewModel.timerSeconds.collectAsState()
-    val isTimerRunning by viewModel.isTimerRunning.collectAsState()
-    val restMinutes by viewModel.restMinutes.collectAsState()
-    val isSeriesButtonEnabled by viewModel.isSeriesButtonEnabled.collectAsState()
-    val isSeriesRunning by viewModel.isSeriesRunning.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+
     var showFinishSeriesDialog by remember { mutableStateOf(false) }
     var showFinishExerciseDialog by remember { mutableStateOf(false) }
+
+    // Interceptar botón atrás
+    BackHandler(enabled = uiState.isTrainingActive) {
+        viewModel.onBackPressed()
+    }
+
+    // Diálogo de confirmación de salida
+    if (uiState.showExitConfirmation) {
+        ConfirmDialog(
+            title = "Salir del entrenamiento",
+            text = "Tienes un entrenamiento activo. Si sales ahora, se perderá el estado del temporizador. ¿Seguro?",
+            confirmText = "Salir",
+            onConfirm = {
+                viewModel.confirmExit()
+                onNavigateBack()
+            },
+            onDismiss = viewModel::dismissExitConfirmation
+        )
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Modo Entrenamiento") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        if (uiState.isTrainingActive) viewModel.onBackPressed() else onNavigateBack()
+                    }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }
                 },
@@ -68,122 +87,161 @@ fun TrainingModeScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Lista de ejercicios (solo lectura)
-            ExerciseListCard(exercises = exercises)
-
-            // Number input para minutos de pausa
-            RestMinutesInput(
-                minutes = restMinutes,
-                onMinutesChange = viewModel::updateRestMinutes,
-                enabled = !isTrainingActive
+            // Lista de ejercicios (Resumen)
+            ExerciseListCard(
+                exercises = uiState.exercises,
+                currentIndex = uiState.currentExerciseIndex,
+                isTrainingActive = uiState.isTrainingActive
             )
 
-            // Botón principal: Comenzar/Terminar entrenamiento
+            // Botón Principal (Comenzar/Terminar)
             MainTrainingButton(
-                isTrainingActive = isTrainingActive,
+                isTrainingActive = uiState.isTrainingActive,
                 onStartTraining = viewModel::startTraining,
                 onEndTraining = viewModel::endTraining,
-                hasExercises = exercises.isNotEmpty()
+                hasExercises = uiState.exercises.isNotEmpty()
             )
 
-            // Cuadro ejercicio actual
-            CurrentExerciseCard(
-                exercise = exercises.getOrNull(currentExerciseIndex),
-                currentSeries = currentSeries,
-                currentWeight = currentWeight,
-                currentNotes = currentNotes,
-                timerSeconds = timerSeconds,
-                isTimerRunning = isTimerRunning,
-                isTrainingActive = isTrainingActive,
-                isSeriesButtonEnabled = isSeriesButtonEnabled,
-                isSeriesRunning = isSeriesRunning,
-                onWeightChange = viewModel::updateWeight,
-                onNotesChange = viewModel::updateNotes,
-                onStartSeries = viewModel::startSeries,
-                onStopSeries = {
-                    val action = viewModel.stopSeries()
-                    if (action == SeriesAction.CONFIRM_FINISH) {
-                        showFinishSeriesDialog = true
-                    }
-                },
-                onPauseTimer = viewModel::pauseTimer,
-                onResumeTimer = viewModel::resumeTimer,
-                onRestartTimer = viewModel::restartTimer,
-                onStopTimer = viewModel::stopTimer,
-                onFinishExercise = {
-                    showFinishExerciseDialog = true
+            // Botón Parar Alarma (Visible solo si suena)
+            if (uiState.isAlarmRinging) {
+                Button(
+                    onClick = viewModel::stopAlarm,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.tertiary)
+                ) {
+                    Icon(Icons.Default.NotificationsOff, null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("DETENER ALARMA", fontWeight = FontWeight.Bold)
                 }
-            )
+            }
+
+            // Tarjeta Ejercicio Activo
+            val currentExercise = uiState.exercises.getOrNull(uiState.currentExerciseIndex)
+            val activeSet = currentExercise?.sets?.getOrNull(uiState.activeSetIndex)
+
+            if (uiState.isTrainingActive && currentExercise != null) {
+                CurrentExerciseCard(
+                    exercise = currentExercise,
+                    allSets = currentExercise.sets,
+                    activeSetIndex = uiState.activeSetIndex,
+                    activeSet = activeSet,
+                    currentSeries = uiState.currentSeries,
+                    currentWeight = uiState.currentWeight,
+                    currentNotes = uiState.currentNotes,
+                    timerSeconds = uiState.timerSeconds,
+                    isTimerRunning = uiState.isTimerRunning,
+                    isTrainingActive = uiState.isTrainingActive,
+                    isSeriesButtonEnabled = uiState.isSeriesButtonEnabled,
+                    isSeriesRunning = uiState.isSeriesRunning,
+                    restMinutes = uiState.restMinutes,
+                    onWeightChange = viewModel::updateWeight,
+                    onNotesChange = viewModel::updateNotes,
+                    onStartSeries = viewModel::startSeries,
+                    onStopSeries = {
+                        val action = viewModel.stopSeries()
+                        if (action == SeriesAction.CONFIRM_FINISH) {
+                            showFinishSeriesDialog = true
+                        }
+                    },
+                    onPauseTimer = viewModel::pauseTimer,
+                    onResumeTimer = viewModel::resumeTimer,
+                    onRestartTimer = viewModel::restartTimer,
+                    onStopTimer = viewModel::stopTimer,
+                    onFinishExercise = { showFinishExerciseDialog = true },
+                    onRestMinutesChange = viewModel::updateRestMinutes
+                )
+            } else if (currentExercise != null) {
+                // Vista previa (No activo)
+                Text(
+                    text = "Pulsa 'Comenzar entrenamiento' para iniciar",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            } else if (uiState.exercises.isEmpty()) {
+                Text(
+                    text = "No hay ejercicios planificados para hoy.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            }
         }
+
         // Diálogos de confirmación
         if (showFinishSeriesDialog) {
-            ConfirmFinishSeriesDialog(
+            ConfirmDialog(
+                title = "Terminar ejercicio",
+                text = "Estás en la última serie. ¿Deseas terminar este ejercicio?",
                 onConfirm = {
                     viewModel.confirmFinishExercise()
                     showFinishSeriesDialog = false
                 },
-                onDismiss = {
-                    showFinishSeriesDialog = false
-                }
+                onDismiss = { showFinishSeriesDialog = false }
             )
         }
 
         if (showFinishExerciseDialog) {
-            ConfirmFinishExerciseDialog(
+            ConfirmDialog(
+                title = "Terminar manualmente",
+                text = "¿Seguro que quieres terminar este ejercicio antes de completar todas las series?",
                 onConfirm = {
                     viewModel.finishExerciseManually()
                     showFinishExerciseDialog = false
                 },
-                onDismiss = {
-                    showFinishExerciseDialog = false
-                }
+                onDismiss = { showFinishExerciseDialog = false }
             )
         }
     }
 }
 
-// ============ COMPONENTES ============
+// ============ COMPONENTES AUXILIARES ============
+
+@Composable
+private fun ConfirmDialog(
+    title: String,
+    text: String,
+    confirmText: String = "Sí, terminar",
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = { Text(text) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(confirmText) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } }
+    )
+}
 
 @Composable
 private fun ExerciseListCard(
-    exercises: List<Exercise>
+    exercises: List<Exercise>,
+    currentIndex: Int,
+    isTrainingActive: Boolean
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "Ejercicios",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Resumen Rutina", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             if (exercises.isEmpty()) {
-                Text(
-                    text = "No hay ejercicios en este día",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("No hay ejercicios hoy", style = MaterialTheme.typography.bodyMedium)
             } else {
                 exercises.forEachIndexed { index, exercise ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                    val isCurrent = isTrainingActive && index == currentIndex
+                    val isDone = isTrainingActive && index < currentIndex
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isCurrent) Icon(Icons.Default.ArrowRight, null, tint = MaterialTheme.colorScheme.primary)
+                        else if (isDone) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                        else Spacer(modifier = Modifier.width(24.dp))
+
                         Text(
-                            text = "${index + 1}.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "${exercise.name} - ${exercise.currentSeries} x ${exercise.currentReps} - ${exercise.currentWeightKg}kg",
-                            style = MaterialTheme.typography.bodyMedium
+                            text = exercise.name,
+                            style = if (isCurrent) MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold) else MaterialTheme.typography.bodyMedium,
+                            color = if (isDone) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -193,107 +251,38 @@ private fun ExerciseListCard(
 }
 
 @Composable
-private fun RestMinutesInput(
-    minutes: Int,
-    onMinutesChange: (Int) -> Unit,
-    enabled: Boolean
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+private fun MainTrainingButton(isTrainingActive: Boolean, onStartTraining: () -> Unit, onEndTraining: () -> Unit, hasExercises: Boolean) {
+    if (hasExercises) {
+        Button(
+            onClick = { if (isTrainingActive) onEndTraining() else onStartTraining() },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = if (isTrainingActive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
         ) {
-            Text(
-                text = "Pausa entre series - Mínimo 1 máximo 99",
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedButton(
-                    onClick = { onMinutesChange(minutes - 1) },
-                    enabled = enabled && minutes > 1
-                ) {
-                    Text("-")
-                }
-
-                OutlinedTextField(
-                    value = minutes.toString(),
-                    onValueChange = {
-                        it.toIntOrNull()?.let { value ->
-                            if (value in 1..99) {
-                                onMinutesChange(value)
-                            }
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = enabled,
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-
-                OutlinedButton(
-                    onClick = { onMinutesChange(minutes + 1) },
-                    enabled = enabled && minutes < 99
-                ) {
-                    Text("+")
-                }
-
-                Text(
-                    text = "min",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+            Text(if (isTrainingActive) "Terminar entrenamiento" else "Comenzar entrenamiento")
         }
     }
 }
 
 @Composable
-private fun MainTrainingButton(
-    isTrainingActive: Boolean,
-    onStartTraining: () -> Unit,
-    onEndTraining: () -> Unit,
-    hasExercises: Boolean
-) {
-    if (hasExercises) {
-        Button(
-            onClick = {
-                if (isTrainingActive) {
-                    onEndTraining()
-                } else {
-                    onStartTraining()
-                }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isTrainingActive) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.primary
-                }
-            )
-        ) {
-            Text(
-                text = if (isTrainingActive) "Terminar entrenamiento" else "Comenzar entrenamiento",
-                style = MaterialTheme.typography.titleMedium
-            )
+private fun RestMinutesInput(minutes: Int, onMinutesChange: (Int) -> Unit, enabled: Boolean) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Tiempo de descanso (min)", style = MaterialTheme.typography.bodyMedium)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { onMinutesChange(minutes - 1) }, enabled = enabled && minutes > 1) { Text("-") }
+                Text(text = "$minutes min", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                OutlinedButton(onClick = { onMinutesChange(minutes + 1) }, enabled = enabled && minutes < 99) { Text("+") }
+            }
         }
     }
 }
 
 @Composable
 private fun CurrentExerciseCard(
-    exercise: Exercise?,
+    exercise: Exercise,
+    activeSet: Set?,
+    allSets: List<Set>,
+    activeSetIndex: Int,
     currentSeries: Int,
     currentWeight: Float,
     currentNotes: String,
@@ -302,6 +291,7 @@ private fun CurrentExerciseCard(
     isTrainingActive: Boolean,
     isSeriesButtonEnabled: Boolean,
     isSeriesRunning: Boolean,
+    restMinutes: Int,
     onWeightChange: (Float) -> Unit,
     onNotesChange: (String) -> Unit,
     onStartSeries: () -> Unit,
@@ -310,293 +300,182 @@ private fun CurrentExerciseCard(
     onResumeTimer: () -> Unit,
     onRestartTimer: () -> Unit,
     onStopTimer: () -> Unit,
-    onFinishExercise: () -> Unit
+    onFinishExercise: () -> Unit,
+    onRestMinutesChange: (Int) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isTrainingActive) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            }
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (exercise != null) {
-                // Imagen del ejercicio
-                /*ExerciseImage(
-                    imageUri = exercise.imageUri,
-                    enabled = isTrainingActive
-                )*/
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Imagen
+            AsyncImage(
+                model = exercise.imageUri,
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp)).background(Color.Gray),
+                contentScale = ContentScale.Crop
+            )
 
-                AsyncImage(
-                    model = exercise.imageUri,
-                    contentDescription = exercise.name,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
-                    contentScale = ContentScale.Crop
-                )
+            Text(exercise.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
 
-                // Nombre del ejercicio
-                Text(
-                    text = exercise.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+            // SETS VISUALIZER
+            Text("Sets:", style = MaterialTheme.typography.labelLarge)
+            allSets.forEachIndexed { index, set ->
+                val isActive = index == activeSetIndex
 
-                // Series, Repeticiones, Peso
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Series (solo lectura)
-                    OutlinedTextField(
-                        value = exercise.currentSeries.toString(),
-                        onValueChange = {},
-                        label = { Text("Series") },
-                        enabled = false,
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-
-                    // Repeticiones (solo lectura)
-                    OutlinedTextField(
-                        value = exercise.currentReps.toString(),
-                        onValueChange = {},
-                        label = { Text("Repeticiones") },
-                        enabled = false,
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-
-                    // Peso (editable)
-                    OutlinedTextField(
-                        value = currentWeight.toString(),
-                        onValueChange = {
-                            it.toFloatOrNull()?.let { weight ->
-                                onWeightChange(weight)
+                if (isActive) {
+                    // Set Activo (Editable)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text("Variante Activa", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                // Series (Objetivo)
+                                OutlinedTextField(
+                                    value = "${set.series}",
+                                    onValueChange = {},
+                                    label = { Text("Series") },
+                                    enabled = false,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                // Reps (Objetivo)
+                                OutlinedTextField(
+                                    value = "${set.reps}",
+                                    onValueChange = {},
+                                    label = { Text("Reps") },
+                                    enabled = false,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                // Peso (Editable)
+                                OutlinedTextField(
+                                    value = if (currentWeight == 0f) "" else currentWeight.toString(),
+                                    onValueChange = { str ->
+                                        if (str.isEmpty()) onWeightChange(0f)
+                                        else str.toFloatOrNull()?.let { onWeightChange(it) }
+                                    },
+                                    label = { Text("Peso") },
+                                    modifier = Modifier.weight(1f),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                                )
                             }
-                        },
-                        label = { Text("Peso") },
-                        enabled = isTrainingActive,
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        suffix = { Text("kg") }
-                    )
+                        }
+                    }
+                } else {
+                    // Otros Sets (Lectura)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Variante #${index + 1}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${set.series} x ${set.reps} @ ${set.weightKg}kg", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                    }
                 }
+            }
 
-                // Notas ejercicio
+            Divider()
+
+            // NOTAS
+            OutlinedTextField(
+                value = currentNotes,
+                onValueChange = onNotesChange,
+                label = { Text("Notas") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2
+            )
+
+            // CONTROLES SERIE (Movido encima de Timer)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
-                    value = currentNotes,
-                    onValueChange = onNotesChange,
-                    label = { Text("Notas") },
-                    placeholder = {
-                        Text(
-                            "Observaciones sobre este ejercicio...",
-                            color = Color.Gray
-                        )
-                    },
-                    enabled = isTrainingActive,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp),
-                    minLines = 3,
-                    maxLines = 6,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFF0A84FF),
-                        unfocusedBorderColor = Color.Gray
-                    )
+                    value = "$currentSeries / ${activeSet?.series ?: "?"}",
+                    onValueChange = {},
+                    label = { Text("Serie Actual") },
+                    enabled = false,
+                    modifier = Modifier.weight(1f)
                 )
-
-                // Serie actual y botón Iniciar/Parar Serie
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Serie actual (solo lectura)
-                    OutlinedTextField(
-                        value = "$currentSeries de ${exercise.currentSeries + 1}",
-                        onValueChange = {},
-                        label = { Text("Serie actual") },
-                        enabled = false,
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-
-                    // Botón Iniciar/Parar Serie
-                    Button(
-                        onClick = {
-                            if (isSeriesRunning) {
-                                onStopSeries()
-                            } else {
-                                onStartSeries()
-                            }
-                        },
-                        enabled = isTrainingActive && isSeriesButtonEnabled,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(if (isSeriesRunning) "Parar Serie" else "Iniciar Serie")
-                    }
-                }
-
-                // Timer
-                TimerDisplay(
-                    timerSeconds = timerSeconds,
-                    isTimerRunning = isTimerRunning,
-                    isTrainingActive = isTrainingActive
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            if (isTimerRunning) {
-                                onPauseTimer()
-                            } else {
-                                onResumeTimer()
-                            }
-                        },
-                        enabled = isTrainingActive && !isSeriesRunning && timerSeconds > 0,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(if (isTimerRunning) "Pausar" else "Reanudar")
-                    }
-
-                    Button(
-                        onClick = onRestartTimer,
-                        enabled = isTrainingActive && !isSeriesRunning && timerSeconds > 0,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Reiniciar")
-                    }
-
-                    Button(
-                        onClick = onStopTimer,
-                        enabled = isTrainingActive && !isSeriesRunning && timerSeconds > 0,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Parar")
-                    }
-                }
-
-                // Botón Terminar ejercicio
                 Button(
-                    onClick = onFinishExercise,
-                    enabled = isTrainingActive,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    )
+                    onClick = { if (isSeriesRunning) onStopSeries() else onStartSeries() },
+                    modifier = Modifier.weight(1f),
+                    enabled = isSeriesButtonEnabled
                 ) {
-                    Text("Terminar ejercicio")
+                    Text(if (isSeriesRunning) "Terminar Serie" else "Iniciar Serie")
+                }
+            }
+
+            // CONTROLES DE DESCANSO (Movidos aquí, encima del timer)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Descanso:", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(end = 4.dp))
+                OutlinedButton(
+                    onClick = { onRestMinutesChange(restMinutes - 1) },
+                    enabled = !isTimerRunning && restMinutes > 1,
+                    modifier = Modifier.size(40.dp),
+                    contentPadding = PaddingValues(0.dp)
+                ) { Text("-") }
+
+                Text(
+                    text = "$restMinutes min",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+
+                OutlinedButton(
+                    onClick = { onRestMinutesChange(restMinutes + 1) },
+                    enabled = !isTimerRunning && restMinutes < 99,
+                    modifier = Modifier.size(40.dp),
+                    contentPadding = PaddingValues(0.dp)
+                ) { Text("+") }
+            }
+
+            // TIMER
+            TimerDisplay(seconds = timerSeconds, isRunning = isTimerRunning)
+
+            // BOTONES TIMER (Pausar, Reiniciar, Parar)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { if (isTimerRunning) onPauseTimer() else onResumeTimer() },
+                    modifier = Modifier.weight(1f),
+                    enabled = timerSeconds > 0 && !isSeriesRunning
+                ) {
+                    Text(if (isTimerRunning) "Pausar" else "Reanudar")
                 }
 
-            } else {
-                Text(
-                    text = "No hay ejercicio seleccionado",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                // Botón Reiniciar
+                FilledTonalButton(
+                    onClick = onRestartTimer,
+                    modifier = Modifier.weight(0.7f),
+                    enabled = !isSeriesRunning && !isTimerRunning
+                ) {
+                    Icon(Icons.Default.Refresh, contentDescription = "Reiniciar")
+                }
+
+                Button(
+                    onClick = onStopTimer,
+                    modifier = Modifier.weight(1f),
+                    enabled = timerSeconds > 0 && !isSeriesRunning
+                ) {
+                    Text("Parar")
+                }
+            }
+
+            Button(onClick = onFinishExercise, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) {
+                Text("Siguiente Ejercicio")
             }
         }
     }
 }
 
 @Composable
-private fun TimerDisplay(
-    timerSeconds: Int,
-    isTimerRunning: Boolean,
-    isTrainingActive: Boolean
-) {
-    Card(
+fun TimerDisplay(seconds: Int, isRunning: Boolean) {
+    val m = seconds / 60
+    val s = seconds % 60
+    Text(
+        text = String.format("%02d:%02d", m, s),
+        style = MaterialTheme.typography.displayLarge,
+        fontWeight = FontWeight.Bold,
+        color = if (isRunning) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isTimerRunning) {
-                MaterialTheme.colorScheme.tertiaryContainer
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                val minutes = timerSeconds / 60
-                val seconds = timerSeconds % 60
-                Text(
-                    text = String.format("%02d:%02d", minutes, seconds),
-                    style = MaterialTheme.typography.displayLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isTimerRunning) {
-                        MaterialTheme.colorScheme.onTertiaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ConfirmFinishSeriesDialog(
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Terminar ejercicio") },
-        text = { Text("Estás en la última serie. ¿Estás seguro de terminar el ejercicio? Aún puedes modificar el peso o las notas si lo necesitas.") },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("Sí, terminar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        }
-    )
-}
-
-@Composable
-private fun ConfirmFinishExerciseDialog(
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Terminar ejercicio manualmente") },
-        text = { Text("¿Estás seguro de que quieres terminar este ejercicio antes de completar todas las series?") },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("Sí, terminar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        }
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center
     )
 }
