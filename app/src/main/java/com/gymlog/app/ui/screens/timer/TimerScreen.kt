@@ -1,213 +1,261 @@
 package com.gymlog.app.ui.screens.timer
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.offset
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.pointerInput
+import com.gymlog.app.ui.theme.*
 import com.gymlog.app.util.RequestNotificationPermission
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimerScreen(
     viewModel: TimerViewModel = hiltViewModel()
 ) {
     RequestNotificationPermission()
+    val uiState by viewModel.uiState.collectAsState()
+
     val hours by viewModel.hours.collectAsState()
     val minutes by viewModel.minutes.collectAsState()
     val seconds by viewModel.seconds.collectAsState()
     val isRunning by viewModel.isRunning.collectAsState()
     val timeFinished by viewModel.timeFinished.collectAsState()
-    
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            text = "Cronómetro",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
-        
-        Spacer(modifier = Modifier.height(48.dp))
-        
-        // Display time
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            NumberPicker(
-                value = hours.toIntOrNull() ?: 0,
-                onValueChange = { viewModel.updateHours(String.format("%02d", it)) },
-                range = 0..23,
-                enabled = !isRunning
-            )
-            Text(":", fontSize = 72.sp, fontWeight = FontWeight.Bold)
-            NumberPicker(
-                value = minutes.toIntOrNull() ?: 0,
-                onValueChange = { viewModel.updateMinutes(String.format("%02d", it)) },
-                range = 0..59,
-                enabled = !isRunning
-            )
-            Text(":", fontSize = 72.sp, fontWeight = FontWeight.Bold)
-            NumberPicker(
-                value = seconds.toIntOrNull() ?: 0,
-                onValueChange = { viewModel.updateSeconds(String.format("%02d", it)) },
-                range = 0..59,
-                enabled = !isRunning
+
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        "CRONÓMETRO",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 2.sp
+                        )
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = Color.White
+                )
             )
         }
-        
-        Spacer(modifier = Modifier.height(48.dp))
-        
-        // Controls
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceEvenly
         ) {
-            if (!isRunning) {
-                FloatingActionButton(
-                    onClick = viewModel::startTimer,
-                    modifier = Modifier.size(80.dp)
-                ) {
-                    Icon(Icons.Default.PlayArrow, "Iniciar", modifier = Modifier.size(32.dp))
-                }
-            } else {
-                FloatingActionButton(
-                    onClick = viewModel::pauseTimer,
-                    modifier = Modifier.size(80.dp)
-                ) {
-                    Icon(Icons.Default.Pause, "Pausar", modifier = Modifier.size(32.dp))
-                }
-            }
-            
-            OutlinedButton(
-                onClick = viewModel::resetTimer,
-                modifier = Modifier.size(80.dp)
+            // 1. SELECTOR DE TIEMPO (HUNTER STYLE)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Refresh, "Reiniciar", modifier = Modifier.size(32.dp))
+                // Fondo de brillo sutil
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    if (isRunning) HunterPurple.copy(alpha = 0.2f) else HunterPrimary.copy(alpha = 0.1f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    HunterNumberPicker(
+                        value = hours.toIntOrNull() ?: 0,
+                        onValueChange = { viewModel.updateHours(String.format("%02d", it)) },
+                        range = 0..23,
+                        enabled = !isRunning,
+                        label = "H"
+                    )
+                    Text(
+                        ":",
+                        fontSize = 48.sp,
+                        fontWeight = FontWeight.Thin,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        // CORREGIDO: Padding separado
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp)
+                            .padding(bottom = 32.dp)
+                    )
+                    HunterNumberPicker(
+                        value = minutes.toIntOrNull() ?: 0,
+                        onValueChange = { viewModel.updateMinutes(String.format("%02d", it)) },
+                        range = 0..59,
+                        enabled = !isRunning,
+                        label = "M"
+                    )
+                    Text(
+                        ":",
+                        fontSize = 48.sp,
+                        fontWeight = FontWeight.Thin,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        // CORREGIDO: Padding separado
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp)
+                            .padding(bottom = 32.dp)
+                    )
+                    HunterNumberPicker(
+                        value = seconds.toIntOrNull() ?: 0,
+                        onValueChange = { viewModel.updateSeconds(String.format("%02d", it)) },
+                        range = 0..59,
+                        enabled = !isRunning,
+                        label = "S"
+                    )
+                }
             }
+
+            // 2. CONTROLES
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (!isRunning) {
+                    FilledIconButton(
+                        onClick = viewModel::startTimer,
+                        modifier = Modifier.size(90.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = HunterPrimary)
+                    ) {
+                        Icon(
+                            Icons.Default.PlayArrow,
+                            contentDescription = "Iniciar",
+                            modifier = Modifier.size(48.dp),
+                            tint = Color.Black
+                        )
+                    }
+                } else {
+                    FilledIconButton(
+                        onClick = viewModel::pauseTimer,
+                        modifier = Modifier.size(90.dp),
+                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = HunterPurple)
+                    ) {
+                        Icon(
+                            Icons.Default.Pause,
+                            contentDescription = "Pausar",
+                            modifier = Modifier.size(48.dp),
+                            tint = Color.White
+                        )
+                    }
+                }
+
+                FilledTonalButton(
+                    onClick = viewModel::resetTimer,
+                    modifier = Modifier.size(60.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "Reiniciar",
+                        modifier = Modifier.size(24.dp),
+                        tint = Color.White
+                    )
+                }
+            }
+
+            Text(
+                text = if (isRunning) "SISTEMA ACTIVO" else "SISTEMA EN ESPERA",
+                style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 2.sp),
+                color = if (isRunning) HunterPurple else MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
-    
+
     if (timeFinished) {
-        AlertDialog(
-            onDismissRequest = viewModel::dismissTimeFinished,
-            title = { Text("¡Tiempo terminado!") },
-            text = { Text("El cronómetro ha llegado a 0.") },
-            confirmButton = {
-                TextButton(onClick = viewModel::dismissTimeFinished) {
-                    Text("OK")
-                }
-            }
+        HunterConfirmDialog(
+            title = "TIEMPO AGOTADO",
+            text = "El contador ha llegado a cero.",
+            confirmText = "ACEPTAR",
+            onConfirm = viewModel::dismissTimeFinished,
+            onDismiss = {}
         )
     }
 }
 
 @Composable
-private fun NumberPicker(
+private fun HunterNumberPicker(
     value: Int,
     onValueChange: (Int) -> Unit,
     range: IntRange,
     enabled: Boolean,
-    modifier: Modifier = Modifier
+    label: String
 ) {
     var localValue by remember(value) { mutableIntStateOf(value) }
     var accumulatedDrag by remember { mutableFloatStateOf(0f) }
 
-    Box(
-        modifier = modifier
-            .width(100.dp)
-            .height(120.dp)
-            .pointerInput(enabled) {
-                if (enabled) {
-                    detectDragGestures(
-                        onDragEnd = {
-                            accumulatedDrag = 0f
-                        }
-                    ) { _, dragAmount ->
-                        accumulatedDrag += dragAmount.y
-
-                        // Cambiar cada 50px de arrastre
-                        val threshold = 50f
-                        if (accumulatedDrag <= -threshold) {
-                            // Arrastrando hacia arriba = incrementar
-                            val newValue = (localValue + 1).coerceIn(range)
-                            onValueChange(newValue)
-                            accumulatedDrag = 0f
-                            localValue = newValue
-                        } else if (accumulatedDrag >= threshold) {
-                            // Arrastrando hacia abajo = decrementar
-                            val newValue = (localValue - 1).coerceIn(range)
-                            onValueChange(newValue)
-                            accumulatedDrag = 0f
-                            localValue = newValue
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .width(80.dp)
+                .height(100.dp)
+                .pointerInput(enabled) {
+                    if (enabled) {
+                        detectDragGestures(
+                            onDragEnd = { accumulatedDrag = 0f }
+                        ) { _, dragAmount ->
+                            accumulatedDrag += dragAmount.y
+                            val threshold = 40f
+                            if (accumulatedDrag <= -threshold) {
+                                val newValue = if (localValue + 1 > range.last) range.first else localValue + 1
+                                onValueChange(newValue)
+                                accumulatedDrag = 0f
+                                localValue = newValue
+                            } else if (accumulatedDrag >= threshold) {
+                                val newValue = if (localValue - 1 < range.first) range.last else localValue - 1
+                                onValueChange(newValue)
+                                accumulatedDrag = 0f
+                                localValue = newValue
+                            }
                         }
                     }
-                }
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        // Número anterior (arriba, semitransparente)
-        Text(
-            text = String.format("%02d", if (localValue > range.first) localValue - 1 else range.last),
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-            modifier = Modifier.offset(y = (-40).dp),
-            textAlign = TextAlign.Center
-        )
-
-        // Número actual (centro)
-        Text(
-            text = String.format("%02d", value),
-            fontSize = 72.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
-        )
-
-        // Número siguiente (abajo, semitransparente)
-        Text(
-            text = String.format("%02d", if (localValue < range.last) localValue + 1 else range.first),
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
-            modifier = Modifier.offset(y = 40.dp),
-            textAlign = TextAlign.Center
-        )
-
-        // Líneas indicadoras (opcional)
-        if (enabled) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val strokeWidth = 2.dp.toPx()
-                drawLine(
-                    color = androidx.compose.ui.graphics.Color.Gray,
-                    start = Offset(0f, size.height * 0.3f),
-                    end = Offset(size.width, size.height * 0.3f),
-                    strokeWidth = strokeWidth
-                )
-                drawLine(
-                    color = androidx.compose.ui.graphics.Color.Gray,
-                    start = Offset(0f, size.height * 0.7f),
-                    end = Offset(size.width, size.height * 0.7f),
-                    strokeWidth = strokeWidth
-                )
-            }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            // Número Principal
+            Text(
+                text = String.format("%02d", value),
+                fontSize = 64.sp,
+                fontWeight = FontWeight.Black,
+                color = if (enabled) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                textAlign = TextAlign.Center,
+                letterSpacing = (-2).sp
+            )
         }
+
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

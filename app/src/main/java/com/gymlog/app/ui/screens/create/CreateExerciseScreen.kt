@@ -3,7 +3,9 @@ package com.gymlog.app.ui.screens.create
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -17,14 +19,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.gymlog.app.data.local.entity.MuscleGroup
+import com.gymlog.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,35 +47,43 @@ fun CreateExerciseScreen(
     val showNameError by viewModel.showNameError.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val navigateBack by viewModel.navigateBack.collectAsState()
-    
+
     var showMuscleGroupDialog by remember { mutableStateOf(false) }
-    
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         viewModel.updateImageUri(uri)
     }
-    
+
     LaunchedEffect(navigateBack) {
         if (navigateBack) {
             onNavigateBack()
             viewModel.resetNavigation()
         }
     }
-    
+
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("Nuevo ejercicio") },
+                title = {
+                    Text(
+                        "NUEVO OBJETIVO",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp
+                        )
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.Close, contentDescription = "Cerrar")
+                        Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = Color.White
                 )
             )
         }
@@ -82,15 +94,14 @@ fun CreateExerciseScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // Image section
-            Card(
+            // 1. SLOT DE IMAGEN
+            HunterCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
-                    .clickable { imagePickerLauncher.launch("image/*") },
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    .height(200.dp),
+                onClick = { imagePickerLauncher.launch("image/*") }
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -100,34 +111,23 @@ fun CreateExerciseScreen(
                         AsyncImage(
                             model = imageUri,
                             contentDescription = "Imagen del ejercicio",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(12.dp)),
+                            modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
-                        
+
+                        // Overlay para cambiar
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)),
+                                .background(Color.Black.copy(alpha = 0.4f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CameraAlt,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(48.dp),
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "Cambiar imagen",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
                         }
                     } else {
                         Column(
@@ -138,251 +138,122 @@ fun CreateExerciseScreen(
                                 imageVector = Icons.Default.AddPhotoAlternate,
                                 contentDescription = null,
                                 modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = HunterPrimary.copy(alpha = 0.5f)
                             )
                             Text(
-                                text = "Añadir imagen (opcional)",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "AÑADIR VISUAL",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = HunterPrimary
                             )
                         }
                     }
                 }
             }
-            
-            // Basic information
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
+
+            // 2. DATOS BÁSICOS
+            HunterCard {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text(
-                        text = "Información básica",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    OutlinedTextField(
+                    Text("DATOS DE IDENTIFICACIÓN", style = MaterialTheme.typography.labelLarge, color = HunterPrimary)
+
+                    HunterInput(
                         value = name,
                         onValueChange = viewModel::updateName,
-                        label = { Text("Nombre del ejercicio *") },
-                        modifier = Modifier.fillMaxWidth(),
-                        isError = showNameError,
-                        supportingText = if (showNameError) {
-                            { Text("El nombre es obligatorio") }
-                        } else null,
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.FitnessCenter,
-                                contentDescription = null
-                            )
-                        }
+                        label = "NOMBRE CLAVE *"
                     )
-                    
-                    OutlinedTextField(
+                    if (showNameError) {
+                        Text("Requerido", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                    }
+
+                    HunterInput(
                         value = description,
                         onValueChange = viewModel::updateDescription,
-                        label = { Text("Descripción (opcional)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 3,
-                        maxLines = 5,
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Description,
-                                contentDescription = null
-                            )
-                        }
+                        label = "DESCRIPCIÓN TÁCTICA"
                     )
-                    
+
+                    // Selector de Grupo
                     OutlinedCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { showMuscleGroupDialog = true },
-                        border = if (showMuscleGroupError) {
-                            CardDefaults.outlinedCardBorder().copy(
-                                width = 2.dp,
-                                brush = SolidColor(MaterialTheme.colorScheme.error)
-                            )
-                        } else {
-                            CardDefaults.outlinedCardBorder()
-                        }
+                        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.background),
+                        border = BorderStroke(1.dp, if (showMuscleGroupError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
+                            modifier = Modifier.padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Category,
-                                    contentDescription = null,
-                                    tint = if (selectedMuscleGroup != null) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    }
-                                )
-                                Text(
-                                    text = selectedMuscleGroup?.displayName ?: "Seleccionar grupo muscular *",
-                                    color = if (selectedMuscleGroup != null) {
-                                        MaterialTheme.colorScheme.onSurface
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    }
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.Default.ArrowDropDown,
-                                contentDescription = null
+                            Text(
+                                text = selectedMuscleGroup?.displayName?.uppercase() ?: "SELECCIONAR CLASE *",
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                color = if (selectedMuscleGroup != null) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            Icon(Icons.Default.ArrowDropDown, null, tint = HunterPrimary)
                         }
-                    }
-                    
-                    if (showMuscleGroupError) {
-                        Text(
-                            text = "Debes seleccionar un grupo muscular",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-                        )
                     }
                 }
             }
-            
-            // Initial values
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
+
+            // 3. VALORES INICIALES (Opcional)
+            HunterCard {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text(
-                        text = "Valores iniciales (opcional)",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Text(
-                        text = "Si proporcionas valores iniciales, se creará una entrada en el historial",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        OutlinedTextField(
+                    Text("PARÁMETROS INICIALES (OPCIONAL)", style = MaterialTheme.typography.labelLarge, color = HunterPrimary)
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        HunterInput(
                             value = series,
                             onValueChange = viewModel::updateSeries,
-                            label = { Text("Series") },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Number
-                            ),
+                            label = "SERIES",
                             modifier = Modifier.weight(1f),
-                            singleLine = true,
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Repeat,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
-                        
-                        OutlinedTextField(
+
+                        HunterInput(
                             value = reps,
                             onValueChange = viewModel::updateReps,
-                            label = { Text("Repeticiones") },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Number
-                            ),
+                            label = "REPS",
                             modifier = Modifier.weight(1f),
-                            singleLine = true,
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.Numbers,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
                     }
-                    
-                    OutlinedTextField(
+
+                    HunterInput(
                         value = weight,
                         onValueChange = viewModel::updateWeight,
-                        label = { Text("Peso (kg)") },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Decimal
-                        ),
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.FitnessCenter,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                        label = "PESO (KG)",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
                 }
             }
-            
-            Button(
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            HunterButton(
+                text = "REGISTRAR OBJETIVO",
                 onClick = viewModel::saveExercise,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                enabled = !isLoading
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Save,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Guardar ejercicio",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
-                    )
+                enabled = !isLoading,
+                icon = {
+                    if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.Black)
+                    else Icon(Icons.Default.Save, null, tint = Color.Black)
                 }
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
+            )
         }
     }
-    
+
     if (showMuscleGroupDialog) {
         AlertDialog(
             onDismissRequest = { showMuscleGroupDialog = false },
-            title = { Text("Seleccionar grupo muscular") },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("SELECCIONAR CLASE", color = Color.White, fontWeight = FontWeight.Bold) },
             text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     MuscleGroup.values().forEach { group ->
                         Row(
                             modifier = Modifier
@@ -393,29 +264,26 @@ fun CreateExerciseScreen(
                                     showMuscleGroupDialog = false
                                 }
                                 .padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             RadioButton(
                                 selected = selectedMuscleGroup == group,
-                                onClick = {
-                                    viewModel.selectMuscleGroup(group)
-                                    showMuscleGroupDialog = false
-                                }
+                                onClick = null,
+                                colors = RadioButtonDefaults.colors(selectedColor = HunterPrimary, unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant)
                             )
                             Text(
-                                text = group.displayName,
-                                style = MaterialTheme.typography.bodyLarge
+                                text = group.displayName.uppercase(),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White
                             )
                         }
                     }
                 }
             },
-            confirmButton = {
-                TextButton(
-                    onClick = { showMuscleGroupDialog = false }
-                ) {
-                    Text("Cancelar")
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showMuscleGroupDialog = false }) {
+                    Text("CANCELAR", color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         )

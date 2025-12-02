@@ -1,13 +1,17 @@
 package com.gymlog.app.ui.screens.calendars
 
 import android.util.Log
-import androidx.compose.foundation.clickable // <--- AÑADIDO
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -15,21 +19,25 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gymlog.app.data.local.entity.DayCategory
+import com.gymlog.app.data.local.entity.MuscleGroup
 import com.gymlog.app.domain.model.Exercise
-// ALIAS PARA EVITAR CONFLICTO EN LA UI
 import com.gymlog.app.domain.model.Set as GymSet
+import com.gymlog.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,7 +59,11 @@ fun DaySlotDetailScreen(
     val isExercisesExpanded by viewModel.isExercisesExpanded.collectAsState()
 
     var showBottomSheet by remember { mutableStateOf(false) }
-    val bottomSheetState = rememberModalBottomSheetState()
+
+    // CORREGIDO: rememberModalBottomSheetState no lleva containerColor
+    val bottomSheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
 
     LaunchedEffect(navigateBack) {
         if (navigateBack) {
@@ -68,22 +80,26 @@ fun DaySlotDetailScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        daySlot?.dayOfWeek?.displayName ?: "Editar Día"
+                        daySlot?.dayOfWeek?.displayName?.uppercase() ?: "PLANIFICACIÓN",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp
+                        )
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = Color.White
                 )
             )
         }
@@ -95,7 +111,7 @@ fun DaySlotDetailScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = HunterPrimary)
             }
         } else {
             Column(
@@ -104,101 +120,78 @@ fun DaySlotDetailScreen(
                     .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // Estado completado
-                CompletedSection(
+                // 1. ESTADO DE LA MISIÓN
+                HunterMissionStatus(
                     completed = completed,
-                    onToggleCompleted = viewModel::toggleCompleted
+                    onToggle = viewModel::toggleCompleted
                 )
 
-                // Botón comenzar entrenamiento
+                // 2. BOTÓN DE ACCIÓN (INICIAR)
                 if (selectedExercisesWithSets.isNotEmpty()) {
-                    Button(
+                    HunterButton(
+                        text = "INICIAR SECUENCIA",
                         onClick = viewModel::startTraining,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4CAF50)
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Comenzar Entrenamiento",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                        color = if (completed) HunterCyan else HunterPurple,
+                        textColor = Color.White,
+                        icon = {
+                            Icon(Icons.Default.PlayArrow, null, tint = Color.White)
+                        }
+                    )
                 }
 
-                // Selección de categorías (expandible)
-                ExpandableCategoriesSection(
-                    selectedCategories = selectedCategories,
-                    onToggleCategory = viewModel::toggleCategory,
+                // 3. CLASE DE COMBATE (CATEGORÍAS)
+                HunterExpandableSection(
+                    title = "CLASE DE COMBATE",
                     isExpanded = isCategoriesExpanded,
-                    onToggleExpansion = viewModel::toggleCategoriesExpansion
-                )
-
-                // Ejercicios seleccionados (expandible con drag & drop)
-                ExpandableExercisesSection(
-                    exercisesWithSets = selectedExercisesWithSets,
-                    onRemoveExercise = viewModel::removeExercise,
-                    onExerciseClick = onNavigateToExercise,
-                    onAddExercise = { showBottomSheet = true },
-                    onMoveExercise = viewModel::moveExercise,
-                    hasCategories = selectedCategories.isNotEmpty(),
-                    selectedCategories = selectedCategories,
-                    isExpanded = isExercisesExpanded,
-                    onToggleExpansion = viewModel::toggleExercisesExpansion
-                )
-
-                // Botón guardar
-                Button(
-                    onClick = viewModel::saveDaySlot,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    enabled = !isLoading
+                    onToggle = viewModel::toggleCategoriesExpansion
                 ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Save,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Guardar cambios",
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                    CategorySelectorGrid(
+                        selectedCategories = selectedCategories,
+                        onToggleCategory = viewModel::toggleCategory
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                // 4. LOADOUT (EJERCICIOS)
+                HunterExpandableSection(
+                    title = "EQUIPAMIENTO (EJERCICIOS)",
+                    isExpanded = isExercisesExpanded,
+                    onToggle = viewModel::toggleExercisesExpansion,
+                    badgeCount = selectedExercisesWithSets.size
+                ) {
+                    LoadoutContent(
+                        exercisesWithSets = selectedExercisesWithSets,
+                        hasCategories = selectedCategories.isNotEmpty(),
+                        isCardioOrRest = selectedCategories.all { it == DayCategory.CARDIO || it == DayCategory.REST },
+                        onAddExercise = { showBottomSheet = true },
+                        onExerciseClick = onNavigateToExercise,
+                        onRemoveExercise = viewModel::removeExercise,
+                        onMoveExercise = viewModel::moveExercise
+                    )
+                }
+
+                // 5. GUARDAR
+                HunterButton(
+                    text = "CONFIRMAR CAMBIOS",
+                    onClick = viewModel::saveDaySlot,
+                    enabled = !isLoading,
+                    color = HunterPrimary
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
 
-    // Bottom Sheet para seleccionar ejercicios y sus sets
     if (showBottomSheet) {
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
-            sheetState = bottomSheetState
+            sheetState = bottomSheetState,
+            containerColor = MaterialTheme.colorScheme.surface, // Aquí es donde va el color
+            contentColor = Color.White
         ) {
-            ExercisePickerBottomSheet(
+            HunterInventorySheet(
                 exercises = filteredExercises,
                 onExerciseSetSelect = { exercise, set ->
                     viewModel.addExercise(exercise.id, set.id)
@@ -211,42 +204,52 @@ fun DaySlotDetailScreen(
     }
 }
 
+// ============ COMPONENTES HUNTER ============
+
 @Composable
-private fun CompletedSection(
+private fun HunterMissionStatus(
     completed: Boolean,
-    onToggleCompleted: () -> Unit
+    onToggle: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    HunterCard(
+        onClick = onToggle,
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .toggleable(
-                    value = completed,
-                    role = Role.Checkbox,
-                    onValueChange = { onToggleCompleted() }
-                )
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Checkbox(
-                checked = completed,
-                onCheckedChange = null
-            )
             Column {
                 Text(
-                    text = "Día completado",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    text = "ESTADO DE MISIÓN",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = if (completed) "Este día ha sido marcado como completado"
-                    else "Marca como completado cuando termines el entrenamiento",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = if (completed) "CUMPLIDA" else "PENDIENTE",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp),
+                    color = if (completed) HunterCyan else HunterSecondary
+                )
+            }
+
+            // Switch estilo Hunter
+            Box(
+                modifier = Modifier
+                    .size(width = 60.dp, height = 32.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (completed) HunterCyan.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant)
+                    .border(1.dp, if (completed) HunterCyan else MaterialTheme.colorScheme.outline.copy(0.3f), RoundedCornerShape(16.dp))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .align(if (completed) Alignment.CenterEnd else Alignment.CenterStart)
+                        .padding(4.dp)
+                        .clip(CircleShape)
+                        .background(if (completed) HunterCyan else MaterialTheme.colorScheme.onSurfaceVariant)
                 )
             }
         }
@@ -254,68 +257,93 @@ private fun CompletedSection(
 }
 
 @Composable
-private fun ExpandableCategoriesSection(
-    selectedCategories: Set<DayCategory>,
-    onToggleCategory: (DayCategory) -> Unit,
+private fun HunterExpandableSection(
+    title: String,
     isExpanded: Boolean,
-    onToggleExpansion: () -> Unit
+    onToggle: () -> Unit,
+    badgeCount: Int? = null,
+    content: @Composable () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
     ) {
-        Column(
+        // Header
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clickable { onToggle() }
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .toggleable(
-                        value = isExpanded,
-                        onValueChange = { onToggleExpansion() }
-                    ),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "Categorías de entrenamiento",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    text = title,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    color = HunterPrimary
                 )
-                Icon(
-                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (isExpanded) "Contraer" else "Expandir"
-                )
+                if (badgeCount != null && badgeCount > 0) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Badge(containerColor = HunterPrimary) { Text("$badgeCount") }
+                }
             }
+            Icon(
+                imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
 
-            if (isExpanded) {
-                Text(
-                    text = "Selecciona una o más categorías para este día",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        // Content
+        if (isExpanded) {
+            Box(modifier = Modifier.padding(16.dp)) {
+                content()
+            }
+        }
+    }
+}
 
-                val categories = DayCategory.values().toList()
-                categories.chunked(2).forEach { rowCategories ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+@Composable
+private fun CategorySelectorGrid(
+    selectedCategories: Set<DayCategory>,
+    onToggleCategory: (DayCategory) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        val categories = DayCategory.values().toList()
+        categories.chunked(2).forEach { rowCategories ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                rowCategories.forEach { category ->
+                    val isSelected = selectedCategories.contains(category)
+
+                    // Chip personalizado
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .clickable { onToggleCategory(category) },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isSelected) HunterPrimary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.background,
+                        border = BorderStroke(1.dp, if (isSelected) HunterPrimary else MaterialTheme.colorScheme.outline.copy(0.3f))
                     ) {
-                        rowCategories.forEach { category ->
-                            FilterChip(
-                                onClick = { onToggleCategory(category) },
-                                label = { Text(category.displayName) },
-                                selected = selectedCategories.contains(category),
-                                modifier = Modifier.weight(1f)
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = category.displayName.uppercase(),
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = if (isSelected) HunterPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        if (rowCategories.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
                     }
+                }
+                if (rowCategories.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
@@ -323,108 +351,70 @@ private fun ExpandableCategoriesSection(
 }
 
 @Composable
-private fun ExpandableExercisesSection(
+private fun LoadoutContent(
     exercisesWithSets: List<ExerciseWithSelectedSet>,
-    onRemoveExercise: (String) -> Unit,
-    onExerciseClick: (String) -> Unit,
-    onAddExercise: () -> Unit,
-    onMoveExercise: (Int, Int) -> Unit,
     hasCategories: Boolean,
-    selectedCategories: Set<DayCategory>,
-    isExpanded: Boolean,
-    onToggleExpansion: () -> Unit
+    isCardioOrRest: Boolean,
+    onAddExercise: () -> Unit,
+    onExerciseClick: (String) -> Unit,
+    onRemoveExercise: (String) -> Unit,
+    onMoveExercise: (Int, Int) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
+    when {
+        !hasCategories -> {
+            Text(
+                "⚠️ Selecciona una clase de combate primero.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        isCardioOrRest -> {
+            Text(
+                "Día de recuperación o resistencia. No se requiere equipamiento pesado.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = HunterCyan
+            )
+        }
+        else -> {
+            // Botón Añadir (Estilo Slot vacío)
+            OutlinedButton(
+                onClick = onAddExercise,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .toggleable(
-                        value = isExpanded,
-                        onValueChange = { onToggleExpansion() }
-                    ),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, HunterPrimary.copy(alpha = 0.5f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = HunterPrimary)
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Ejercicios del día",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    if (exercisesWithSets.isNotEmpty()) {
-                        Badge {
-                            Text(exercisesWithSets.size.toString())
-                        }
-                    }
-                }
-                Icon(
-                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (isExpanded) "Contraer" else "Expandir"
-                )
+                Icon(Icons.Default.Add, null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("EQUIPAR HABILIDAD", fontWeight = FontWeight.Bold)
             }
 
-            if (isExpanded) {
-                when {
-                    !hasCategories -> {
-                        Text(
-                            text = "Selecciona primero una categoría para añadir ejercicios",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    selectedCategories.all { it == DayCategory.CARDIO || it == DayCategory.REST } -> {
-                        Text(
-                            text = "Días de cardio o descanso - No se requieren ejercicios específicos de musculación",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    else -> {
-                        OutlinedButton(
-                            onClick = onAddExercise,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Añadir ejercicio")
-                        }
+            Spacer(modifier = Modifier.height(16.dp))
 
-                        if (exercisesWithSets.isNotEmpty()) {
-                            DraggableExerciseList(
-                                items = exercisesWithSets,
-                                onExerciseClick = onExerciseClick,
-                                onRemoveExercise = onRemoveExercise,
-                                onMoveExercise = onMoveExercise
-                            )
-                        } else {
-                            Text(
-                                text = "No hay ejercicios añadidos para este día",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
+            if (exercisesWithSets.isNotEmpty()) {
+                DraggableLoadoutList(
+                    items = exercisesWithSets,
+                    onExerciseClick = onExerciseClick,
+                    onRemoveExercise = onRemoveExercise,
+                    onMoveExercise = onMoveExercise
+                )
+            } else {
+                Text(
+                    "Slots vacíos.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
             }
         }
     }
 }
 
-
 @Composable
-private fun DraggableExerciseList(
+private fun DraggableLoadoutList(
     items: List<ExerciseWithSelectedSet>,
     onExerciseClick: (String) -> Unit,
     onRemoveExercise: (String) -> Unit,
@@ -440,7 +430,7 @@ private fun DraggableExerciseList(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         items.forEachIndexed { index, item ->
-            DraggableExerciseCard(
+            HunterDraggableCard(
                 item = item,
                 index = index,
                 isDragged = draggedIndex == index,
@@ -455,9 +445,7 @@ private fun DraggableExerciseList(
                 onDragEnd = {
                     draggedIndex?.let { from ->
                         targetIndex?.let { to ->
-                            if (from != to) {
-                                onMoveExercise(from, to)
-                            }
+                            if (from != to) onMoveExercise(from, to)
                         }
                     }
                     draggedIndex = null
@@ -467,13 +455,13 @@ private fun DraggableExerciseList(
                 onDrag = { dragAmount ->
                     currentDragY += dragAmount
                     draggedIndex?.let { draggedIdx ->
-                        val draggedCenter = currentDragY + 40f
+                        val draggedCenter = currentDragY + 35f // Mitad aprox de la altura
                         var closestIndex = draggedIdx
                         var minDistance = Float.MAX_VALUE
 
                         cardPositions.forEach { (idx, posY) ->
                             if (idx != draggedIdx) {
-                                val cardCenter = posY + 40f
+                                val cardCenter = posY + 35f
                                 val distance = kotlin.math.abs(draggedCenter - cardCenter)
                                 if (distance < minDistance && distance < 60f) {
                                     minDistance = distance
@@ -492,7 +480,7 @@ private fun DraggableExerciseList(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DraggableExerciseCard(
+private fun HunterDraggableCard(
     item: ExerciseWithSelectedSet,
     index: Int,
     isDragged: Boolean,
@@ -509,101 +497,96 @@ private fun DraggableExerciseCard(
     val density = LocalDensity.current
 
     val backgroundColor = when {
-        isDragged -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+        isDragged -> HunterPrimary.copy(alpha = 0.2f)
         isDraggedOver -> MaterialTheme.colorScheme.secondaryContainer
-        else -> MaterialTheme.colorScheme.surface
+        else -> MaterialTheme.colorScheme.background
     }
 
-    Card(
-        onClick = onClick,
+    val borderColor = if (isDragged) HunterPrimary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+    val zIndex = if (isDragged) 10f else 0f
+
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .zIndex(if (isDragged) 10f else 0f)
+            .zIndex(zIndex)
             .offset(y = with(density) { localDragOffset.toDp() })
             .onGloballyPositioned { coordinates ->
                 cardPositionY = coordinates.positionInParent().y
                 onPositionCalculated(cardPositionY)
-            }
-            .pointerInput(item.compositeId) {
-                detectDragGesturesAfterLongPress(
-                    onDragStart = {
-                        onDragStart(cardPositionY)
-                        localDragOffset = 0f
-                    },
-                    onDragEnd = {
-                        onDragEnd()
-                        localDragOffset = 0f
-                    },
-                    onDragCancel = {
-                        onDragEnd()
-                        localDragOffset = 0f
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        localDragOffset += dragAmount.y
-                        onDrag(dragAmount.y)
-                    }
-                )
             },
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isDragged) 8.dp else 2.dp)
+        shape = RoundedCornerShape(12.dp),
+        color = backgroundColor,
+        border = BorderStroke(1.dp, borderColor)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
+            // Drag Handle
             Icon(
                 imageVector = Icons.Default.DragHandle,
                 contentDescription = null,
-                tint = if (isDragged) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp)
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .size(24.dp)
+                    .pointerInput(item.compositeId) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                onDragStart(cardPositionY)
+                                localDragOffset = 0f
+                            },
+                            onDragEnd = {
+                                onDragEnd()
+                                localDragOffset = 0f
+                            },
+                            onDragCancel = {
+                                onDragEnd()
+                                localDragOffset = 0f
+                            },
+                            onDrag = { change, dragAmount ->
+                                change.consume()
+                                localDragOffset += dragAmount.y
+                                onDrag(dragAmount.y)
+                            }
+                        )
+                    }
             )
 
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f).clickable { onClick() }) {
                 Text(
-                    text = item.exercise.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
+                    text = item.exercise.name.uppercase(),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+
+                if (item.selectedSet != null) {
                     Text(
-                        text = item.exercise.muscleGroup.displayName,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "VARIANTE: ${item.selectedSet.series}×${item.selectedSet.reps} @ ${item.selectedSet.weightKg}KG",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = HunterPrimary
                     )
-                    // Mostrar info del set seleccionado
-                    if (item.selectedSet != null) {
-                        Text(
-                            text = "${item.selectedSet.series}×${item.selectedSet.reps} @ ${item.selectedSet.weightKg}kg",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    } else {
-                        Text(
-                            text = "Set sin definir",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
+                } else {
+                    Text(
+                        text = "SIN CONFIGURAR",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             }
 
             IconButton(onClick = onRemove) {
                 Icon(
-                    imageVector = Icons.Default.Remove,
+                    imageVector = Icons.Default.Close,
                     contentDescription = "Eliminar",
-                    tint = MaterialTheme.colorScheme.error
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -611,9 +594,9 @@ private fun DraggableExerciseCard(
 }
 
 @Composable
-private fun ExercisePickerBottomSheet(
+private fun HunterInventorySheet(
     exercises: List<Exercise>,
-    onExerciseSetSelect: (Exercise, GymSet) -> Unit, // Usamos el alias GymSet
+    onExerciseSetSelect: (Exercise, GymSet) -> Unit,
     onDismiss: () -> Unit,
     selectedCategories: Set<DayCategory>
 ) {
@@ -628,29 +611,19 @@ private fun ExercisePickerBottomSheet(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Seleccionar ejercicio",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                text = "INVENTARIO DE HABILIDADES",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
+                color = Color.White
             )
             IconButton(onClick = onDismiss) {
-                Icon(Icons.Default.Close, contentDescription = "Cerrar")
+                Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.White)
             }
         }
 
-        if (selectedCategories.contains(DayCategory.FULL_BODY)) {
-            Text(
-                text = "Mostrando todos los ejercicios (Full Body)",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-        } else {
-            Text(
-                text = "Ejercicios filtrados por: ${selectedCategories.joinToString { it.displayName }}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (exercises.isEmpty()) {
+            Text("No hay ejercicios disponibles para esta clase.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         LazyColumn(
@@ -658,68 +631,56 @@ private fun ExercisePickerBottomSheet(
             modifier = Modifier.heightIn(max = 400.dp)
         ) {
             itemsIndexed(exercises) { index, exercise ->
-                // Estado para expandir los sets de este ejercicio
                 var isSetsExpanded by remember { mutableStateOf(false) }
+                val hasSets = exercise.sets.isNotEmpty()
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.background,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                    modifier = Modifier.clickable {
+                        if (hasSets) isSetsExpanded = !isSetsExpanded
+                    }
                 ) {
                     Column {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { isSetsExpanded = !isSetsExpanded }
-                                .padding(12.dp),
+                                .padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = exercise.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = exercise.muscleGroup.displayName,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            Text(
+                                text = exercise.name,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White
+                            )
                             Icon(
                                 imageVector = if (isSetsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                contentDescription = null
+                                contentDescription = null,
+                                tint = if (hasSets) HunterPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                             )
                         }
 
                         if (isSetsExpanded) {
-                            Divider()
-                            if (exercise.sets.isEmpty()) {
-                                Text(
-                                    text = "Este ejercicio no tiene sets configurados.",
-                                    modifier = Modifier.padding(16.dp),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            } else {
-                                exercise.sets.forEachIndexed { idx, set ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { onExerciseSetSelect(exercise, set) }
-                                            .padding(horizontal = 24.dp, vertical = 12.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text("Variante #${idx + 1}", style = MaterialTheme.typography.bodySmall)
-                                        Text(
-                                            "${set.series}x${set.reps} @ ${set.weightKg}kg",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                    if (idx < exercise.sets.size - 1) Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                            exercise.sets.forEach { set ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onExerciseSetSelect(exercise, set) }
+                                        .padding(16.dp)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("VARIANTE", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        "${set.series}×${set.reps} @ ${set.weightKg}KG",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                        color = HunterPrimary
+                                    )
                                 }
+                                Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.05f))
                             }
                         }
                     }

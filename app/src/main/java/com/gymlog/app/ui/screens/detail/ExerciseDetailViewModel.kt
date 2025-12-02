@@ -6,13 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.gymlog.app.domain.model.Exercise
 import com.gymlog.app.domain.model.ExerciseHistory
 import com.gymlog.app.domain.repository.ExerciseRepository
-import com.gymlog.app.util.InputValidator.validateFloat
-import com.gymlog.app.util.InputValidator.validateInt
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
 import javax.inject.Inject
 import kotlin.text.ifEmpty
 
@@ -27,20 +23,8 @@ class ExerciseDetailViewModel @Inject constructor(
     private val _exercise = MutableStateFlow<Exercise?>(null)
     val exercise = _exercise.asStateFlow()
 
-    private val _series = MutableStateFlow("")
-    val series = _series.asStateFlow()
-
-    private val _reps = MutableStateFlow("")
-    val reps = _reps.asStateFlow()
-
-    private val _weight = MutableStateFlow("")
-    val weight = _weight.asStateFlow()
-
-    private val _notes = MutableStateFlow(" ")
+    private val _notes = MutableStateFlow("")
     val notes = _notes.asStateFlow()
-
-    private val _showSaveSuccess = MutableStateFlow(false)
-    val showSaveSuccess = _showSaveSuccess.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
@@ -50,6 +34,9 @@ class ExerciseDetailViewModel @Inject constructor(
 
     private val _showDeleteEntryDialog = MutableStateFlow<ExerciseHistory?>(null)
     val showDeleteEntryDialog = _showDeleteEntryDialog.asStateFlow()
+
+    private val _showDeleteSetDialog = MutableStateFlow<String?>(null) // ID del set a borrar
+    val showDeleteSetDialog = _showDeleteSetDialog.asStateFlow()
 
     val history: StateFlow<List<ExerciseHistory>> = repository
         .getHistoryForExercise(exerciseId)
@@ -63,109 +50,35 @@ class ExerciseDetailViewModel @Inject constructor(
         loadExercise()
     }
 
-    private fun loadExercise() {
+    // Se hace público para recargar tras editar sets
+    fun loadExercise() {
         viewModelScope.launch {
             _isLoading.value = true
             repository.getExerciseById(exerciseId)?.let { exercise ->
                 _exercise.value = exercise
-                _series.value = if (exercise.currentSeries > 0) exercise.currentSeries.toString() else "0"
-                _reps.value = if (exercise.currentReps > 0) exercise.currentReps.toString() else "0"
-                _weight.value = if (exercise.currentWeightKg > 0) exercise.currentWeightKg.toString() else "0"
-                _notes.value = exercise.notes.ifEmpty { " " }
-
+                _notes.value = exercise.notes
             }
             _isLoading.value = false
-        }
-    }
-
-    fun updateSeries(value: String) {
-        if (value.isEmpty()) {
-            _series.value = "0"
-        } else if (value.validateInt()) {
-            _series.value = value
-        }
-    }
-
-    fun updateReps(value: String) {
-        if (value.isEmpty()) {
-            _reps.value = "0"
-        } else if (value.validateInt()) {
-            _reps.value = value
-        }
-    }
-
-    fun updateWeight(value: String) {
-        if (value.isEmpty()) {
-            _weight.value = "0"
-        } else if (value.validateFloat()) {
-            _weight.value = value
         }
     }
 
     fun updateNotes(value: String) {
-        _notes.value = value.ifEmpty { " " }
+        _notes.value = value
     }
 
-    fun saveExerciseStats() {
+    // Solo guarda las notas, ya no hay "valores actuales" que guardar aquí
+    fun saveNotes() {
         viewModelScope.launch {
             val currentExercise = _exercise.value ?: return@launch
-            val seriesValue = _series.value.toIntOrNull() ?: return@launch
-            val repsValue = _reps.value.toIntOrNull() ?: return@launch
-            val weightValue = _weight.value.toFloatOrNull() ?: 0f
-            val notesValue = _notes.value.ifEmpty { " " }
+            val notesValue = _notes.value.trim()
 
-            _isLoading.value = true
-
-            // Verificar si cambiaron stats o solo notas
-            val statsChanged = seriesValue != currentExercise.currentSeries ||
-                    repsValue != currentExercise.currentReps ||
-                    weightValue != currentExercise.currentWeightKg
-
-            val notesChanged = notesValue != currentExercise.notes
-
-            if (statsChanged) {
-                // Actualizar stats
-                repository.updateExerciseStats(exerciseId, seriesValue, repsValue, weightValue)
-
-                // AÃ±adir entrada al historial
-                repository.insertHistory(
-                    ExerciseHistory(
-                        id = UUID.randomUUID().toString(),
-                        exerciseId = exerciseId,
-                        timestamp = System.currentTimeMillis(),
-                        series = seriesValue,
-                        reps = repsValue,
-                        weightKg = weightValue
-                    )
-                )
-
-                // Actualizar changeLogText
-                val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                val timestamp = dateFormat.format(Date())
-                val newLogEntry = "$timestamp - $seriesValue series x $repsValue reps - $weightValue kg"
-                val updatedChangeLog = if (currentExercise.changeLogText.isEmpty()) {
-                    newLogEntry
-                } else {
-                    "${currentExercise.changeLogText}\n$newLogEntry"
-                }
-                repository.updateExerciseChangeLog(exerciseId, updatedChangeLog)
-            }
-
-            if (notesChanged) {
-                // Solo actualizar notas (no crea historial)
+            if (notesValue != currentExercise.notes) {
+                _isLoading.value = true
                 repository.updateExerciseNotes(exerciseId, notesValue)
+                loadExercise()
+                _isLoading.value = false
             }
-
-            // Reload exercise
-            loadExercise()
-
-            _showSaveSuccess.value = true
-            _isLoading.value = false
         }
-    }
-
-    fun dismissSaveSuccess() {
-        _showSaveSuccess.value = false
     }
 
     fun showDeleteHistoryDialog() {
@@ -198,11 +111,20 @@ class ExerciseDetailViewModel @Inject constructor(
         }
     }
 
-    fun resetToCurrentValues() {
-        val currentExercise = _exercise.value ?: return
-        _series.value = if (currentExercise.currentSeries > 0) currentExercise.currentSeries.toString() else "0"
-        _reps.value = if (currentExercise.currentReps > 0) currentExercise.currentReps.toString() else "0"
-        _weight.value = if (currentExercise.currentWeightKg > 0) currentExercise.currentWeightKg.toString() else "0"
-        _notes.value = currentExercise.notes.ifEmpty { " " }
+    fun confirmDeleteSet(setId: String) {
+        _showDeleteSetDialog.value = setId
+    }
+
+    fun dismissDeleteSetDialog() {
+        _showDeleteSetDialog.value = null
+    }
+
+    fun deleteSet() {
+        val setId = _showDeleteSetDialog.value ?: return
+        viewModelScope.launch {
+            repository.deleteSet(setId)
+            _showDeleteSetDialog.value = null
+            loadExercise() // Recargar la lista
+        }
     }
 }

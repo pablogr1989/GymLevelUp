@@ -8,7 +8,6 @@ data class Exercise(
     val description: String,
     val muscleGroup: MuscleGroup,
     val imageUri: String?,
-    // Nueva lista de Sets
     val sets: List<Set> = emptyList(),
     val notes: String = "",
     val changeLogText: String = "",

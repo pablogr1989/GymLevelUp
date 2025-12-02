@@ -9,9 +9,13 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gymlog.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,7 +30,6 @@ fun EditSetScreen(
     val navigateBack by viewModel.navigateBack.collectAsState()
     val showExitConfirmation by viewModel.showExitConfirmation.collectAsState()
 
-    // Manejar botón físico de atrás
     BackHandler {
         viewModel.onBackPressed()
     }
@@ -39,18 +42,26 @@ fun EditSetScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("Configurar Set") },
+                title = {
+                    Text(
+                        "CONFIGURAR VARIANTE",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp
+                        )
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.onBackPressed() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = Color.White
                 )
             )
         }
@@ -60,72 +71,59 @@ fun EditSetScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            HunterCard {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    OutlinedTextField(
+                    Text("PARÁMETROS DE COMBATE", style = MaterialTheme.typography.labelLarge, color = HunterPrimary)
+
+                    HunterInput(
                         value = series,
                         onValueChange = viewModel::updateSeries,
-                        label = { Text("Series") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
+                        label = "SERIES",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
 
-                    OutlinedTextField(
+                    HunterInput(
                         value = reps,
                         onValueChange = viewModel::updateReps,
-                        label = { Text("Repeticiones") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
+                        label = "REPETICIONES",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
 
-                    OutlinedTextField(
+                    HunterInput(
                         value = weight,
                         onValueChange = viewModel::updateWeight,
-                        label = { Text("Peso (kg)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.fillMaxWidth()
+                        label = "PESO (KG)",
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
                 }
             }
 
-            Button(
+            Spacer(modifier = Modifier.weight(1f))
+
+            HunterButton(
+                text = "GUARDAR VARIANTE",
                 onClick = viewModel::saveSet,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                } else {
-                    Icon(Icons.Default.Save, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Guardar Set")
+                enabled = !isLoading,
+                icon = {
+                    if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.Black)
+                    else Icon(Icons.Default.Save, null, tint = Color.Black)
                 }
-            }
+            )
         }
     }
 
     if (showExitConfirmation) {
-        AlertDialog(
-            onDismissRequest = viewModel::dismissExitConfirmation,
-            title = { Text("¿Salir sin guardar?") },
-            text = { Text("Tienes cambios sin guardar. ¿Estás seguro de que quieres salir?") },
-            confirmButton = {
-                TextButton(onClick = viewModel::confirmExit) {
-                    Text("Salir")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissExitConfirmation) {
-                    Text("Cancelar")
-                }
-            }
+        HunterConfirmDialog(
+            title = "¿DESCARTAR?",
+            text = "Los cambios en los parámetros no se han guardado.",
+            confirmText = "SALIR",
+            onConfirm = viewModel::confirmExit,
+            onDismiss = viewModel::dismissExitConfirmation
         )
     }
 }

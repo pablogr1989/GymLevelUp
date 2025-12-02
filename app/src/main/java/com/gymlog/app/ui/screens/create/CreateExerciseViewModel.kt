@@ -8,6 +8,7 @@ import com.gymlog.app.domain.model.Exercise
 import com.gymlog.app.domain.model.ExerciseHistory
 import com.gymlog.app.domain.model.Set
 import com.gymlog.app.domain.repository.ExerciseRepository
+import com.gymlog.app.util.ImageStorageHelper
 import com.gymlog.app.util.InputValidator.validateFloat
 import com.gymlog.app.util.InputValidator.validateInt
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,7 +20,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CreateExerciseViewModel @Inject constructor(
-    private val repository: ExerciseRepository
+    private val repository: ExerciseRepository,
+    private val imageStorageHelper: ImageStorageHelper // Inyección añadida
 ) : ViewModel() {
 
     private val _name = MutableStateFlow("")
@@ -106,6 +108,12 @@ class CreateExerciseViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
 
+            // LÓGICA DE IMAGEN CORREGIDA:
+            // Guardar la imagen en almacenamiento interno si existe
+            val savedImagePath = _imageUri.value?.let { uri ->
+                imageStorageHelper.saveImageToInternalStorage(uri)
+            }
+
             val exerciseId = UUID.randomUUID().toString()
             val seriesValue = _series.value.toIntOrNull() ?: 0
             val repsValue = _reps.value.toIntOrNull() ?: 0
@@ -126,14 +134,14 @@ class CreateExerciseViewModel @Inject constructor(
                 emptyList()
             }
 
-            // Creamos el ejercicio usando la nueva estructura (lista de sets)
+            // Creamos el ejercicio
             val exercise = Exercise(
                 id = exerciseId,
                 name = _name.value.trim(),
                 description = _description.value.trim(),
                 muscleGroup = _selectedMuscleGroup.value!!,
-                imageUri = _imageUri.value?.toString(),
-                sets = initialSets, // Pasamos la lista de sets aquí
+                imageUri = savedImagePath, // Usamos la ruta persistente
+                sets = initialSets,
                 createdAt = System.currentTimeMillis()
             )
 
@@ -141,13 +149,12 @@ class CreateExerciseViewModel @Inject constructor(
 
             // Add initial history entry if stats were provided
             if (initialSets.isNotEmpty()) {
-                // Usamos los datos del primer set para el historial
                 val firstSet = initialSets.first()
                 repository.insertHistory(
                     ExerciseHistory(
                         id = UUID.randomUUID().toString(),
                         exerciseId = exerciseId,
-                        setId = firstSet.id, // Vinculamos al set creado
+                        setId = firstSet.id,
                         timestamp = System.currentTimeMillis(),
                         series = firstSet.series,
                         reps = firstSet.reps,

@@ -1,9 +1,15 @@
 package com.gymlog.app.ui.screens.main
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -11,15 +17,22 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import com.gymlog.app.data.local.entity.DayCategory
 import com.gymlog.app.data.local.entity.MuscleGroup
 import com.gymlog.app.domain.model.Exercise
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.ui.res.painterResource
-import com.gymlog.app.data.local.entity.DayCategory
+import com.gymlog.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,78 +47,109 @@ fun MainScreen(
     val selectedMuscleGroup by viewModel.selectedMuscleGroup.collectAsState()
     val showDeleteDialog by viewModel.showDeleteDialog.collectAsState()
 
-    // Preexpandir grupos comunes y usar remember para evitar recreación
+    // Mantenemos expandidos por defecto para ver el contenido
     var expandedGroups by remember {
-        mutableStateOf(setOf(MuscleGroup.LEGS, MuscleGroup.CHEST))
+        mutableStateOf(MuscleGroup.values().toSet())
     }
 
-    // Cachear grupos visibles para evitar recalcular
     val visibleGroups = remember(exercises) {
         exercises.keys.sortedBy { it.ordinal }
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background, // Fondo Negro Hunter
         topBar = {
-            TopAppBar(
-                title = {
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("GymLevelUp")
+            // Header personalizado estilo "Player Profile"
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "BIENVENIDO, JUGADOR",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Ejercicios",
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White
+                        )
                     }
-                },
-                /*navigationIcon = {
-                    IconButton(onClick = viewModel::prepopulateDatabase) {
-                        Icon(Icons.Default.Info, contentDescription = "Repoblar base de datos")
+
+                    // Botones de acción (Backup y Nuevo)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(
+                            onClick = onNavigateToBackup,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface)
+                        ) {
+                            Icon(Icons.Default.Save, contentDescription = "Backup", tint = MaterialTheme.colorScheme.onSurface)
+                        }
+
+                        IconButton(
+                            onClick = onNavigateToCreate,
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Nuevo", tint = Color.Black)
+                        }
                     }
-                },*/
-                actions = {
-                    IconButton(onClick = onNavigateToBackup) {
-                        Icon(Icons.Default.UploadFile, contentDescription = "Copia de Seguridad")
-                    }
-                    IconButton(onClick = onNavigateToCreate) {
-                        Icon(Icons.Default.Add, contentDescription = "Añadir ejercicio")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Buscador Estilo Tech
+                SearchBar(
+                    query = searchQuery,
+                    onQueryChange = viewModel::updateSearchQuery
                 )
-            )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Filtros Estilo Chips
+                MuscleGroupFilterChips(
+                    selectedGroup = selectedMuscleGroup,
+                    onGroupSelected = viewModel::selectMuscleGroup
+                )
+            }
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // Search bar
-            SearchBar(
-                query = searchQuery,
-                onQueryChange = viewModel::updateSearchQuery,
-                modifier = Modifier.padding(16.dp)
-            )
-
-            // Muscle group filter chips
-            MuscleGroupFilterChips(
-                selectedGroup = selectedMuscleGroup,
-                onGroupSelected = viewModel::selectMuscleGroup,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-
-            // Exercise list
+        if (exercises.isEmpty() && searchQuery.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "No se encontraron ejercicios...",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = 8.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(bottom = 80.dp, start = 16.dp, end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 visibleGroups.forEach { group ->
                     val groupExercises = exercises[group] ?: emptyList()
                     if (groupExercises.isNotEmpty()) {
                         item(key = "header_${group.name}") {
-                            MuscleGroupHeader(
+                            MuscleGroupSection(
                                 group = group,
                                 isExpanded = expandedGroups.contains(group),
                                 exerciseCount = groupExercises.size,
@@ -122,10 +166,9 @@ fun MainScreen(
                         if (expandedGroups.contains(group)) {
                             items(
                                 items = groupExercises,
-                                key = { exercise -> "exercise_${exercise.id}" },
-                                contentType = { "exercise" }
+                                key = { exercise -> "exercise_${exercise.id}" }
                             ) { exercise ->
-                                ExerciseCard(
+                                ExerciseHunterCard(
                                     exercise = exercise,
                                     onClick = { onNavigateToDetail(exercise.id) },
                                     onLongClick = { viewModel.showDeleteDialog(exercise) }
@@ -138,24 +181,29 @@ fun MainScreen(
         }
     }
 
-    // Delete confirmation dialog
+    // Dialogo de borrado (Estilizado)
     showDeleteDialog?.let { exercise ->
         AlertDialog(
             onDismissRequest = viewModel::dismissDeleteDialog,
-            title = { Text("Eliminar ejercicio") },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("¿Eliminar ejercicio?", color = Color.White) },
             text = {
-                Text("¿Estas seguro de que quieres eliminar '${exercise.name}'? Se eliminara tambien todo su historial.")
+                Text(
+                    "Se eliminará '${exercise.name}' y todo su registro.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             },
             confirmButton = {
-                TextButton(
-                    onClick = { viewModel.deleteExercise(exercise) }
+                Button(
+                    onClick = { viewModel.deleteExercise(exercise) },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                 ) {
-                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                    Text("Eliminar")
                 }
             },
             dismissButton = {
                 TextButton(onClick = viewModel::dismissDeleteDialog) {
-                    Text("Cancelar")
+                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         )
@@ -165,26 +213,36 @@ fun MainScreen(
 @Composable
 private fun SearchBar(
     query: String,
-    onQueryChange: (String) -> Unit,
-    modifier: Modifier = Modifier
+    onQueryChange: (String) -> Unit
 ) {
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        label = { Text("Buscar ejercicio") },
+        placeholder = { Text("Buscar ejercicio...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
         leadingIcon = {
-            Icon(Icons.Default.Search, contentDescription = "Buscar")
+            Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         },
         trailingIcon = {
             if (query.isNotEmpty()) {
                 IconButton(onClick = { onQueryChange("") }) {
-                    Icon(Icons.Default.Clear, contentDescription = "Limpiar")
+                    Icon(Icons.Default.Clear, contentDescription = "Limpiar", tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
         },
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        shape = RoundedCornerShape(12.dp),
         singleLine = true,
-        shape = RoundedCornerShape(12.dp)
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+            cursorColor = MaterialTheme.colorScheme.primary,
+            focusedTextColor = Color.White,
+            unfocusedTextColor = Color.White
+        )
     )
 }
 
@@ -195,147 +253,145 @@ private fun MuscleGroupFilterChips(
     modifier: Modifier = Modifier
 ) {
     LazyRow(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {
-            FilterChip(
-                selected = selectedGroup == null,
-                onClick = { onGroupSelected(null) },
-                label = { Text("Todos") }
+            HunterChip(
+                text = "Todo",
+                isSelected = selectedGroup == null,
+                onClick = { onGroupSelected(null) }
             )
         }
         items(MuscleGroup.values().toList()) { group ->
-            FilterChip(
-                selected = selectedGroup == group,
-                onClick = { onGroupSelected(group) },
-                label = { Text(group.displayName) }
+            HunterChip(
+                text = group.displayName,
+                isSelected = selectedGroup == group,
+                onClick = { onGroupSelected(group) }
             )
         }
     }
 }
 
 @Composable
-private fun MuscleGroupHeader(
+private fun HunterChip(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .clickable { onClick() }
+            .height(32.dp),
+        shape = RoundedCornerShape(100), // Pill shape
+        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+        border = if (!isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)) else null
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+private fun MuscleGroupSection(
     group: MuscleGroup,
     isExpanded: Boolean,
     exerciseCount: Int,
     onClick: () -> Unit
 ) {
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+            .clickable { onClick() }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val iconRes = when (group) {
-                    MuscleGroup.LEGS -> com.gymlog.app.R.drawable.ic_pierna
-                    MuscleGroup.GLUTES -> com.gymlog.app.R.drawable.ic_gluteos
-                    MuscleGroup.BACK -> com.gymlog.app.R.drawable.ic_espalda
-                    MuscleGroup.CHEST -> com.gymlog.app.R.drawable.ic_torso
-                    MuscleGroup.BICEPS -> com.gymlog.app.R.drawable.ic_biceps
-                    MuscleGroup.TRICEPS -> com.gymlog.app.R.drawable.ic_triceps
-                    MuscleGroup.SHOULDERS -> com.gymlog.app.R.drawable.ic_hombros
-                }
-                Icon(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Column {
-                    Text(
-                        text = group.displayName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "$exerciseCount ejercicios",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Icon(
-                imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = if (isExpanded) "Contraer" else "Expandir"
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Línea decorativa vertical
+            Box(
+                modifier = Modifier
+                    .size(width = 4.dp, height = 24.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(MaterialTheme.colorScheme.primary)
             )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = group.displayName.uppercase(),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp
+                ),
+                color = Color.White
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Badge(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.primary
+            ) {
+                Text("$exerciseCount")
+            }
         }
+
+        Icon(
+            imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ExerciseCard(
+private fun ExerciseHunterCard(
     exercise: Exercise,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
+    // Estilo "Tarjeta de Misión"
     Card(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 4.dp),
-        onClick = onClick,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+            .padding(bottom = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
+            // Imagen del ejercicio con borde brillante
+            NeonIconBox(exercise = exercise)
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // Información
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = exercise.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    if (exercise.currentSeries > 0 && exercise.currentReps > 0) {
-                        Text(
-                            text = "${exercise.currentSeries} — ${exercise.currentReps}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (exercise.currentWeightKg > 0) {
-                        Text(
-                            text = "${exercise.currentWeightKg} kg",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
             }
+
+            // Botón de opciones
             IconButton(onClick = onLongClick) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
-                    contentDescription = "Mas opciones",
+                    contentDescription = "Opciones",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -343,18 +399,65 @@ private fun ExerciseCard(
     }
 }
 
-/*
 @Composable
-private fun LazyRow(
-    modifier: Modifier = Modifier,
-    horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
-    content: @Composable () -> Unit
+fun NeonIconBox(
+    exercise: Exercise,
+    modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = horizontalArrangement
+    // Contenedor principal
+    Box(
+        modifier = modifier
+            .size(70.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.background)
+            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
     ) {
-        content()
+        // Si es el icono vectorial, aplicamos el EFECTO NEÓN
+        val iconRes = getGroupIcon(exercise.muscleGroup)
+        val primaryColor = MaterialTheme.colorScheme.primary
+
+        // 1. Capa de brillo (Glow) detrás
+        // Dibujamos el icono un poco más grande, con alpha bajo y desenfocado
+        // Nota: Compose no tiene blur nativo fácil en DrawScope sin Android 12+,
+        // así que un truco visual es pintar un círculo difuso o el mismo icono con alpha.
+        // Para simular el "brillo" de la imagen que pasaste, usaremos un gradiente radial suave detrás.
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(50.dp) // Un poco más grande que el icono
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            primaryColor.copy(alpha = 0.6f), // Centro brillante
+                            Color.Transparent // Borde transparente
+                        )
+                    )
+                )
+        )
+
+        // 2. Icono Principal (Nítido encima)
+        Icon(
+            painter = painterResource(id = iconRes),
+            contentDescription = null,
+            tint = primaryColor, // Azul eléctrico sólido
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(36.dp) // Tamaño del icono
+        )
     }
 }
-*/
+
+@DrawableRes
+private fun getGroupIcon(group: MuscleGroup): Int {
+    return when (group) {
+        MuscleGroup.LEGS -> com.gymlog.app.R.drawable.ic_espalda
+        MuscleGroup.BICEPS -> com.gymlog.app.R.drawable.ic_biceps
+        MuscleGroup.GLUTES -> com.gymlog.app.R.drawable.ic_gluteos
+        MuscleGroup.CHEST -> com.gymlog.app.R.drawable.ic_torso
+        MuscleGroup.TRICEPS -> com.gymlog.app.R.drawable.ic_triceps
+        MuscleGroup.SHOULDERS -> com.gymlog.app.R.drawable.ic_hombros
+        MuscleGroup.BACK -> com.gymlog.app.R.drawable.ic_espalda
+        else -> com.gymlog.app.R.drawable.ic_exercise_placeholder
+    }
+}

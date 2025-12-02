@@ -85,11 +85,16 @@ fun MainAppScreen() {
             composable(
                 route = Screen.ExerciseDetail.route,
                 arguments = Screen.ExerciseDetail.arguments
-            ) {
+            ) { backStackEntry ->
+                val exerciseId = backStackEntry.arguments?.getString("exerciseId") ?: ""
+
                 ExerciseDetailScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToEdit = { exerciseId ->
-                        navController.navigate(Screen.EditExercise.createRoute(exerciseId))
+                    onNavigateToEdit = { id ->
+                        navController.navigate(Screen.EditExercise.createRoute(id))
+                    },
+                    onNavigateToEditSet = { _, setId ->
+                        navController.navigate(Screen.EditSet.createRoute(exerciseId, setId))
                     }
                 )
             }
@@ -97,16 +102,9 @@ fun MainAppScreen() {
             composable(
                 route = Screen.EditExercise.route,
                 arguments = Screen.EditExercise.arguments
-            ) { backStackEntry ->
-                // Obtenemos el ID de la ruta para pasarlo al navegar
-                val exerciseId = backStackEntry.arguments?.getString("exerciseId") ?: ""
-
+            ) {
                 EditExerciseScreen(
-                    onNavigateBack = { navController.popBackStack() },
-                    onNavigateToEditSet = { _, setId ->
-                        // Usamos el exerciseId real, ignoramos el primer parametro dummy
-                        navController.navigate(Screen.EditSet.createRoute(exerciseId, setId))
-                    }
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
 

@@ -1,10 +1,16 @@
 package com.gymlog.app.ui.screens.detail
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -12,13 +18,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import coil.compose.AsyncImage
+import com.gymlog.app.data.local.entity.MuscleGroup
+import com.gymlog.app.domain.model.Exercise
 import com.gymlog.app.domain.model.ExerciseHistory
+import com.gymlog.app.domain.model.Set
+import com.gymlog.app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -27,38 +44,41 @@ import java.util.*
 fun ExerciseDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEdit: (String) -> Unit,
+    onNavigateToEditSet: (String, String?) -> Unit = { _, _ -> },
     viewModel: ExerciseDetailViewModel = hiltViewModel()
 ) {
     val exercise by viewModel.exercise.collectAsState()
     val history by viewModel.history.collectAsState()
-    val series by viewModel.series.collectAsState()
-    val reps by viewModel.reps.collectAsState()
-    val weight by viewModel.weight.collectAsState()
     val notes by viewModel.notes.collectAsState()
-    val showSaveSuccess by viewModel.showSaveSuccess.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val showDeleteHistoryDialog by viewModel.showDeleteHistoryDialog.collectAsState()
     val showDeleteEntryDialog by viewModel.showDeleteEntryDialog.collectAsState()
+    val showDeleteSetDialog by viewModel.showDeleteSetDialog.collectAsState()
+
+    // Recargar al volver de editar un set
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.loadExercise()
+    }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("Detalles del Ejercicio") },
+                title = { Text("DATOS DE MISIÓN", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Volver")
+                        Icon(Icons.Default.ArrowBack, "Volver", tint = Color.White)
                     }
                 },
                 actions = {
                     IconButton(onClick = { exercise?.let { onNavigateToEdit(it.id) } }) {
-                        Icon(Icons.Default.Edit, "Editar")
+                        Icon(Icons.Default.Settings, "Editar Ficha", tint = MaterialTheme.colorScheme.onSurface)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = Color.White,
+                    actionIconContentColor = MaterialTheme.colorScheme.primary
                 )
             )
         }
@@ -68,233 +88,133 @@ fun ExerciseDetailScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                contentPadding = PaddingValues(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // Imagen y nombre
+                // HEADER
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        if (ex.imageUri != null) {
-                            AsyncImage(
-                                model = ex.imageUri,
-                                contentDescription = ex.name,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        HunterLargeImageBox(exercise = ex)
+
+                        Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = ex.name,
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold
+                            text = ex.name.uppercase(),
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.5.sp
+                            ),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
 
-                        AssistChip(
-                            onClick = {},
-                            label = { Text(ex.muscleGroup.displayName) }
-                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        HunterChip(text = ex.muscleGroup.displayName.uppercase())
+                    }
+                }
 
-                        if (ex.description.isNotEmpty()) {
+                // SECCIÓN: SETS PLANIFICADOS (Nueva)
+                item {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SectionHeader(title = "CONFIGURACIÓN DE COMBATE")
+
+                            IconButton(onClick = { onNavigateToEditSet(ex.id, null) }) {
+                                Icon(Icons.Default.AddCircle, "Añadir Set", tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+
+                        if (ex.sets.isEmpty()) {
                             Text(
-                                text = ex.description,
+                                "No hay variantes configuradas.",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 8.dp)
                             )
-                        }
-                    }
-                }
-
-                // NOTAS
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF2C2C2E)
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Description,
-                                    contentDescription = null,
-                                    tint = Color(0xFF0A84FF)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Notas",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = Color.White
-                                )
-                            }
-
-                            OutlinedTextField(
-                                value = notes,
-                                onValueChange = viewModel::updateNotes,
-                                placeholder = {
-                                    Text(
-                                        "Escribe observaciones sobre este ejercicio...",
-                                        color = Color.Gray
+                        } else {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                ex.sets.forEachIndexed { index, set ->
+                                    HunterSetCard(
+                                        set = set,
+                                        index = index + 1,
+                                        onClick = { onNavigateToEditSet(ex.id, set.id) },
+                                        onDelete = { viewModel.confirmDeleteSet(set.id) }
                                     )
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                minLines = 3,
-                                maxLines = 6,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    focusedBorderColor = Color(0xFF0A84FF),
-                                    unfocusedBorderColor = Color.Gray
-                                )
-                            )
-                        }
-                    }
-                }
-
-                // VALORES ACTUALES
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF2C2C2E)
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text(
-                                text = "Valores Actuales",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = Color.White
-                            )
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                OutlinedTextField(
-                                    value = series,
-                                    onValueChange = viewModel::updateSeries,
-                                    label = { Text("Series", color = Color.Gray) },
-                                    modifier = Modifier.weight(1f),
-                                    leadingIcon = {
-                                        Icon(Icons.Default.Repeat, null, tint = Color(0xFF0A84FF))
-                                    },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White
-                                    )
-                                )
-
-                                OutlinedTextField(
-                                    value = reps,
-                                    onValueChange = viewModel::updateReps,
-                                    label = { Text("Repeticiones", color = Color.Gray) },
-                                    modifier = Modifier.weight(1f),
-                                    leadingIcon = {
-                                        Icon(Icons.Default.Numbers, null, tint = Color(0xFF0A84FF))
-                                    },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White
-                                    )
-                                )
-                            }
-
-                            OutlinedTextField(
-                                value = weight,
-                                onValueChange = viewModel::updateWeight,
-                                label = { Text("Peso (kg)", color = Color.Gray) },
-                                modifier = Modifier.fillMaxWidth(),
-                                leadingIcon = {
-                                    Icon(Icons.Default.FitnessCenter, null, tint = Color(0xFF0A84FF))
-                                },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White
-                                )
-                            )
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                OutlinedButton(
-                                    onClick = viewModel::resetToCurrentValues,
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !isLoading
-                                ) {
-                                    Icon(Icons.Default.Close, null)
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Cancelar")
                                 }
+                            }
+                        }
+                    }
+                }
 
-                                Button(
-                                    onClick = viewModel::saveExerciseStats,
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !isLoading,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF0A84FF)
-                                    )
-                                ) {
-                                    if (isLoading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(20.dp),
-                                            color = Color.White,
-                                            strokeWidth = 2.dp
-                                        )
-                                    } else {
-                                        Icon(Icons.Default.Check, null)
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Guardar")
+                // SECCIÓN: NOTAS (Solo lectura/edición rápida)
+                item {
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        SectionHeader(title = "NOTAS TÁCTICAS")
+
+                        OutlinedTextField(
+                            value = notes,
+                            onValueChange = viewModel::updateNotes,
+                            placeholder = { Text("Sin observaciones...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 2,
+                            maxLines = 4,
+                            colors = HunterInputColors(),
+                            shape = RoundedCornerShape(12.dp),
+                            trailingIcon = {
+                                if (notes.trim() != ex.notes) {
+                                    IconButton(onClick = viewModel::saveNotes) {
+                                        Icon(Icons.Default.Save, "Guardar", tint = MaterialTheme.colorScheme.primary)
                                     }
                                 }
                             }
-                        }
+                        )
                     }
                 }
 
-                // HISTORIAL
+                // SECCIÓN: HISTORIAL
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.History, null, tint = Color(0xFF0A84FF))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                "Historial",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
+                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SectionHeader(title = "REGISTRO DE COMBATE")
+
+                            if (history.isNotEmpty()) {
+                                TextButton(onClick = viewModel::showDeleteHistoryDialog) {
+                                    Text("BORRAR TODO", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
                         }
 
-                        if (history.isNotEmpty()) {
-                            TextButton(
-                                onClick = viewModel::showDeleteHistoryDialog,
-                                colors = ButtonDefaults.textButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.error
-                                )
+                        if (history.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.DeleteSweep, null)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Borrar Todo")
+                                Text(
+                                    "Sin registros previos.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                )
                             }
                         }
                     }
                 }
 
                 items(history) { entry ->
-                    HistoryEntryCard(
+                    HistoryLogItem(
                         entry = entry,
                         onDelete = { viewModel.showDeleteEntryDialog(entry) }
                     )
@@ -303,66 +223,190 @@ fun ExerciseDetailScreen(
         }
     }
 
-    // DiÃ¡logos
+    // Diálogos
     if (showDeleteHistoryDialog) {
-        AlertDialog(
-            onDismissRequest = viewModel::dismissDeleteHistoryDialog,
-            title = { Text("Borrar todo el historial") },
-            text = { Text("¿Estas seguro? Esta accion no se puede deshacer.") },
-            confirmButton = {
-                TextButton(
-                    onClick = viewModel::deleteAllHistory,
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Borrar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissDeleteHistoryDialog) {
-                    Text("Cancelar")
-                }
-            }
+        HunterConfirmDialog(
+            title = "BORRAR REGISTRO",
+            text = "Se eliminará todo el historial. Irreversible.",
+            confirmText = "ELIMINAR",
+            onConfirm = viewModel::deleteAllHistory,
+            onDismiss = viewModel::dismissDeleteHistoryDialog
         )
     }
 
     showDeleteEntryDialog?.let { entry ->
-        AlertDialog(
-            onDismissRequest = viewModel::dismissDeleteEntryDialog,
-            title = { Text("Eliminar entrada") },
-            text = { Text("¿Estas seguro de eliminar esta entrada del historial?") },
-            confirmButton = {
-                TextButton(
-                    onClick = { viewModel.deleteHistoryEntry(entry) },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
+        HunterConfirmDialog(
+            title = "ELIMINAR ENTRADA",
+            text = "¿Eliminar este registro?",
+            confirmText = "ELIMINAR",
+            onConfirm = { viewModel.deleteHistoryEntry(entry) },
+            onDismiss = viewModel::dismissDeleteEntryDialog
+        )
+    }
+
+    showDeleteSetDialog?.let { _ ->
+        HunterConfirmDialog(
+            title = "ELIMINAR VARIANTE",
+            text = "¿Eliminar este set de la configuración?",
+            confirmText = "ELIMINAR",
+            onConfirm = viewModel::deleteSet,
+            onDismiss = viewModel::dismissDeleteSetDialog
+        )
+    }
+}
+
+// ============ COMPONENTES VISUALES ============
+
+@Composable
+fun HunterSetCard(
+    set: Set,
+    index: Int,
+    onClick: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Badge de número
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), CircleShape),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text("Eliminar")
+                    Text(
+                        text = "#$index",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissDeleteEntryDialog) {
-                    Text("Cancelar")
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Datos
+                Column {
+                    Text(
+                        text = "${set.weightKg} KG",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
+                        color = Color.White
+                    )
+                    Text(
+                        text = "${set.series} Series × ${set.reps} Reps",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
+
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, "Borrar", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
+            }
+        }
+    }
+}
+
+@Composable
+fun SectionHeader(title: String) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(bottom = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(4.dp, 16.dp)
+                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
 
 @Composable
-private fun HistoryEntryCard(
+fun HunterInputColors() = OutlinedTextFieldDefaults.colors(
+    focusedContainerColor = MaterialTheme.colorScheme.background,
+    unfocusedContainerColor = MaterialTheme.colorScheme.background,
+    focusedBorderColor = MaterialTheme.colorScheme.primary,
+    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+    focusedLabelColor = MaterialTheme.colorScheme.primary,
+    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    cursorColor = MaterialTheme.colorScheme.primary,
+    focusedTextColor = Color.White,
+    unfocusedTextColor = Color.White
+)
+
+@Composable
+fun HunterLargeImageBox(exercise: Exercise) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(250.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+    ) {
+        if (exercise.imageUri != null) {
+            AsyncImage(
+                model = exercise.imageUri,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            val iconRes = getGroupIcon(exercise.muscleGroup)
+            val primaryColor = MaterialTheme.colorScheme.primary
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(primaryColor.copy(alpha = 0.3f), Color.Transparent),
+                            radius = 400f
+                        )
+                    )
+            )
+
+            Icon(
+                painter = painterResource(id = iconRes),
+                contentDescription = null,
+                tint = primaryColor,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(80.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun HistoryLogItem(
     entry: ExerciseHistory,
     onDelete: () -> Unit
 ) {
-    val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
+    val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+    val timeFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF2C2C2E)
-        )
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        shape = RoundedCornerShape(8.dp)
     ) {
         Row(
             modifier = Modifier
@@ -371,28 +415,106 @@ private fun HistoryEntryCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(
-                    text = dateFormat.format(Date(entry.timestamp)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "${entry.series} x ${entry.reps} - ${entry.weightKg} kg",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Medium
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.background, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = dateFormat.format(Date(entry.timestamp)).uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = timeFormat.format(Date(entry.timestamp)),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column {
+                    Text(
+                        text = "${entry.weightKg} KG",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                    )
+                    Text(
+                        text = "${entry.series} SETS × ${entry.reps} REPS",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White
+                    )
+                }
             }
 
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
                     "Eliminar",
-                    tint = MaterialTheme.colorScheme.error
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
+    }
+}
+
+@Composable
+fun HunterConfirmDialog(
+    title: String,
+    text: String,
+    confirmText: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = { Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.White) },
+        text = { Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text(confirmText, color = Color.White)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CANCELAR", color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+    )
+}
+
+@Composable
+private fun HunterChip(text: String) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@DrawableRes
+private fun getGroupIcon(group: MuscleGroup): Int {
+    return when (group) {
+        MuscleGroup.LEGS -> com.gymlog.app.R.drawable.ic_pierna
+        MuscleGroup.GLUTES -> com.gymlog.app.R.drawable.ic_gluteos
+        MuscleGroup.BACK -> com.gymlog.app.R.drawable.ic_espalda
+        MuscleGroup.CHEST -> com.gymlog.app.R.drawable.ic_torso
+        MuscleGroup.BICEPS -> com.gymlog.app.R.drawable.ic_biceps
+        MuscleGroup.TRICEPS -> com.gymlog.app.R.drawable.ic_triceps
+        MuscleGroup.SHOULDERS -> com.gymlog.app.R.drawable.ic_hombros
     }
 }

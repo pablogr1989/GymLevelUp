@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,29 +18,26 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 import coil.compose.AsyncImage
 import com.gymlog.app.data.local.entity.MuscleGroup
-import com.gymlog.app.domain.model.Set
+import com.gymlog.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditExerciseScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToEditSet: (String, String?) -> Unit = { _, _ -> },
     viewModel: EditExerciseViewModel = hiltViewModel()
 ) {
     val name by viewModel.name.collectAsState()
     val description by viewModel.description.collectAsState()
     val selectedMuscleGroup by viewModel.selectedMuscleGroup.collectAsState()
     val imageUri by viewModel.imageUri.collectAsState()
-    val sets by viewModel.sets.collectAsState()
     val showMuscleGroupError by viewModel.showMuscleGroupError.collectAsState()
     val showNameError by viewModel.showNameError.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -54,11 +52,6 @@ fun EditExerciseScreen(
         viewModel.updateImageUri(uri)
     }
 
-    // Recargar datos al volver de la pantalla de Sets
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        viewModel.loadExercise()
-    }
-
     BackHandler {
         viewModel.onBackPressed()
     }
@@ -71,18 +64,26 @@ fun EditExerciseScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("Editar ejercicio") },
+                title = {
+                    Text(
+                        "EDITAR FICHA",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp
+                        )
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.onBackPressed() }) {
-                        Icon(Icons.Default.Close, contentDescription = "Cerrar")
+                        Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = Color.White
                 )
             )
         }
@@ -93,15 +94,14 @@ fun EditExerciseScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // Image section
-            Card(
+            // 1. IMAGEN
+            HunterCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
-                    .clickable { imagePickerLauncher.launch("image/*") },
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    .height(200.dp),
+                onClick = { imagePickerLauncher.launch("image/*") }
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -111,11 +111,23 @@ fun EditExerciseScreen(
                         AsyncImage(
                             model = imageUri,
                             contentDescription = "Imagen del ejercicio",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(12.dp)),
+                            modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.4f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
                     } else {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -125,130 +137,88 @@ fun EditExerciseScreen(
                                 imageVector = Icons.Default.AddPhotoAlternate,
                                 contentDescription = null,
                                 modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = HunterPrimary.copy(alpha = 0.5f)
                             )
                             Text(
-                                text = "Añadir imagen",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "ACTUALIZAR VISUAL",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = HunterPrimary
                             )
                         }
                     }
                 }
             }
 
-            // Basic information
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            // 2. DATOS
+            HunterCard {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text("Información básica", style = MaterialTheme.typography.titleMedium)
+                    Text("DATOS DE IDENTIFICACIÓN", style = MaterialTheme.typography.labelLarge, color = HunterPrimary)
 
-                    OutlinedTextField(
+                    HunterInput(
                         value = name,
                         onValueChange = viewModel::updateName,
-                        label = { Text("Nombre *") },
-                        modifier = Modifier.fillMaxWidth(),
-                        isError = showNameError
+                        label = "NOMBRE CLAVE *"
                     )
 
-                    OutlinedTextField(
+                    HunterInput(
                         value = description,
                         onValueChange = viewModel::updateDescription,
-                        label = { Text("Descripción") },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 3
+                        label = "DESCRIPCIÓN TÁCTICA"
                     )
 
                     OutlinedCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { showMuscleGroupDialog = true },
-                        border = if (showMuscleGroupError) {
-                            CardDefaults.outlinedCardBorder().copy(brush = SolidColor(MaterialTheme.colorScheme.error))
-                        } else {
-                            CardDefaults.outlinedCardBorder()
-                        }
+                        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.background),
+                        border = BorderStroke(1.dp, if (showMuscleGroupError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = selectedMuscleGroup?.displayName ?: "Seleccionar grupo muscular *",
-                                modifier = Modifier.weight(1f)
+                                text = selectedMuscleGroup?.displayName?.uppercase() ?: "SELECCIONAR CLASE *",
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                color = if (selectedMuscleGroup != null) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Icon(Icons.Default.ArrowDropDown, null)
+                            Icon(Icons.Default.ArrowDropDown, null, tint = HunterPrimary)
                         }
                     }
                 }
             }
 
-            // SETS SECTION
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Variantes (Sets)", style = MaterialTheme.typography.titleMedium)
-                        IconButton(onClick = {
-                            onNavigateToEditSet(name, null)
-                        }) {
-                            Icon(Icons.Default.Add, "Añadir Set")
-                        }
-                    }
+            Spacer(modifier = Modifier.weight(1f))
 
-                    if (sets.isEmpty()) {
-                        Text(
-                            "No hay sets configurados.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        sets.forEachIndexed { index, set ->
-                            SetItem(
-                                set = set,
-                                index = index + 1,
-                                onEdit = { onNavigateToEditSet(name, set.id) },
-                                onDelete = { viewModel.deleteSet(set.id) }
-                            )
-                        }
-                    }
-                }
-            }
-
-            Button(
+            HunterButton(
+                text = "GUARDAR CAMBIOS",
                 onClick = viewModel::saveExercise,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading
-            ) {
-                Text("Guardar Cambios")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
+                enabled = !isLoading,
+                icon = {
+                    if (isLoading) CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.Black)
+                    else Icon(Icons.Default.Save, null, tint = Color.Black)
+                }
+            )
         }
     }
 
     if (showMuscleGroupDialog) {
         AlertDialog(
             onDismissRequest = { showMuscleGroupDialog = false },
-            title = { Text("Grupo muscular") },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("GRUPO MUSCULAR", color = Color.White, fontWeight = FontWeight.Bold) },
             text = {
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     MuscleGroup.values().forEach { group ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
                                 .clickable {
                                     viewModel.selectMuscleGroup(group)
                                     showMuscleGroupDialog = false
@@ -258,72 +228,34 @@ fun EditExerciseScreen(
                         ) {
                             RadioButton(
                                 selected = selectedMuscleGroup == group,
-                                onClick = {
-                                    viewModel.selectMuscleGroup(group)
-                                    showMuscleGroupDialog = false
-                                }
+                                onClick = null,
+                                colors = RadioButtonDefaults.colors(selectedColor = HunterPrimary, unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant)
                             )
-                            Text(group.displayName)
+                            Text(
+                                text = group.displayName.uppercase(),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White
+                            )
                         }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showMuscleGroupDialog = false }) { Text("Cancelar") } }
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showMuscleGroupDialog = false }) {
+                    Text("CANCELAR", color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
         )
     }
 
     if (showExitConfirmation) {
-        AlertDialog(
-            onDismissRequest = viewModel::dismissExitConfirmation,
-            title = { Text("¿Salir sin guardar?") },
-            text = { Text("Tienes cambios sin guardar. ¿Estás seguro de que quieres salir?") },
-            confirmButton = {
-                TextButton(onClick = viewModel::confirmExit) { Text("Salir") }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::dismissExitConfirmation) { Text("Cancelar") }
-            }
+        HunterConfirmDialog(
+            title = "¿DESCARTAR CAMBIOS?",
+            text = "Tienes modificaciones sin guardar. ¿Salir de todas formas?",
+            confirmText = "SALIR",
+            onConfirm = viewModel::confirmExit,
+            onDismiss = viewModel::dismissExitConfirmation
         )
-    }
-}
-
-@Composable
-fun SetItem(
-    set: Set,
-    index: Int,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onEdit() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text(
-                    text = "Variante #$index",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = "${set.series} series × ${set.reps} reps @ ${set.weightKg} kg",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Borrar",
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
-        }
     }
 }
