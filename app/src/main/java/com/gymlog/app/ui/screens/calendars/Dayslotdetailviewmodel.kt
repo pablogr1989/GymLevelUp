@@ -9,7 +9,6 @@ import com.gymlog.app.domain.model.DaySlot
 import com.gymlog.app.domain.model.Exercise
 import com.gymlog.app.domain.repository.CalendarRepository
 import com.gymlog.app.domain.repository.ExerciseRepository
-// ALIAS PARA EVITAR CONFLICTO CON KOTLIN.COLLECTIONS.SET
 import com.gymlog.app.domain.model.Set as GymSet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -25,7 +24,7 @@ data class ExerciseWithSelectedSet(
 
 data class DaySlotUiState(
     val daySlot: DaySlot? = null,
-    val selectedCategories: Set<DayCategory> = emptySet(), // Referencia a Kotlin Set (Colección)
+    val selectedCategories: Set<DayCategory> = emptySet(), // Colección estándar
     val selectedExerciseIds: List<String> = emptyList(),
     val completed: Boolean = false,
     val isLoading: Boolean = false,
@@ -68,7 +67,6 @@ class DaySlotDetailViewModel @Inject constructor(
             initialValue = emptyList()
         )
 
-    // Flujo principal
     val selectedExercisesWithSets: StateFlow<List<ExerciseWithSelectedSet>> = combine(
         allExercises,
         _uiState.map { it.selectedExerciseIds }
@@ -83,7 +81,7 @@ class DaySlotDetailViewModel @Inject constructor(
             val exercise = exerciseMap[exId]
 
             if (exercise != null) {
-                // Usamos GymSet (alias) implícitamente al acceder a exercise.sets
+                // Usamos GymSet (alias)
                 val set = if (setId != null) exercise.sets.find { it.id == setId } else exercise.sets.firstOrNull()
                 ExerciseWithSelectedSet(exercise, set, compositeId)
             } else {
@@ -156,6 +154,7 @@ class DaySlotDetailViewModel @Inject constructor(
                 current + category
             }
 
+            // Limpieza de ejercicios
             val currentExercises = state.selectedExerciseIds
             var newExercises = currentExercises
 

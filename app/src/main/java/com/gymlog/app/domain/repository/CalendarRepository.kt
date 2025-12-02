@@ -10,21 +10,21 @@ interface CalendarRepository {
     suspend fun insertCalendar(calendar: Calendar)
     suspend fun updateCalendar(calendar: Calendar)
     suspend fun deleteCalendar(calendar: Calendar)
-    
+
     // Month operations
     fun getMonthsForCalendar(calendarId: String): Flow<List<Month>>
     suspend fun getMonthById(monthId: String): Month?
     suspend fun insertMonth(month: Month)
     suspend fun updateMonth(month: Month)
     suspend fun deleteMonth(month: Month)
-    
+
     // Week operations
     fun getWeeksForMonth(monthId: String): Flow<List<Week>>
     suspend fun getWeekById(weekId: String): Week?
     suspend fun insertWeek(week: Week)
     suspend fun updateWeek(week: Week)
     suspend fun deleteWeek(week: Week)
-    
+
     // DaySlot operations
     fun getDaysForWeek(weekId: String): Flow<List<DaySlot>>
     suspend fun getDayById(dayId: String): DaySlot?
@@ -35,7 +35,10 @@ interface CalendarRepository {
     suspend fun updateMultipleDaysCompleted(dayIds: List<String>, completed: Boolean)
     suspend fun clearAllCompletedForCalendar(calendarId: String)
     suspend fun clearExerciseReferences(exerciseId: String)
-    
+
+    // Nueva función para intercambiar días
+    suspend fun swapDaySlots(daySlotId1: String, daySlotId2: String)
+
     // Composite operations
     suspend fun getCalendarWithMonths(calendarId: String): CalendarWithMonths?
     suspend fun getMonthWithWeeks(monthId: String): MonthWithWeeks?

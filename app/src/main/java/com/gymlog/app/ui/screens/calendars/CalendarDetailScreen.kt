@@ -1,17 +1,23 @@
 package com.gymlog.app.ui.screens.calendars
 
-import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,6 +43,7 @@ fun CalendarDetailScreen(
     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
     val selectedDayIds by viewModel.selectedDayIds.collectAsState()
     val showClearAllDialog by viewModel.showClearAllDialog.collectAsState()
+    val swapSourceDayId by viewModel.swapSourceDayId.collectAsState()
 
     Scaffold(
         topBar = {
@@ -48,13 +55,38 @@ fun CalendarDetailScreen(
                     }
                 },
                 actions = {
-                    if (!isSelectionMode) {
+                    if (!isSelectionMode && swapSourceDayId == null) {
                         IconButton(onClick = viewModel::showClearAllDialog) {
                             Icon(Icons.Default.ClearAll, contentDescription = "Limpiar checks")
                         }
                     }
                 }
             )
+        },
+        bottomBar = {
+            if (swapSourceDayId != null) {
+                BottomAppBar(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                ) {
+                    Text(
+                        text = "Selecciona el día destino para mover",
+                        modifier = Modifier.weight(1f).padding(start = 16.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    TextButton(onClick = viewModel::cancelSwap) {
+                        Text("Cancelar")
+                    }
+                }
+            } else if (isSelectionMode) {
+                MultiSelectControls(
+                    selectedCount = selectedDayIds.size,
+                    onMarkAll = viewModel::markSelectedAsCompleted,
+                    onUnmarkAll = viewModel::clearSelectedCompleted,
+                    onCancel = viewModel::clearSelection
+                )
+            }
         }
     ) { paddingValues ->
         calendarWithMonths?.let { data ->
@@ -63,8 +95,6 @@ fun CalendarDetailScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                // Navigation between months
-                Log.d("CalendarScreen", "Mostrando mes: $currentMonthIndex")
                 MonthNavigation(
                     currentMonth = data.months.getOrNull(currentMonthIndex),
                     onPreviousMonth = { viewModel.changeMonth(-1) },
@@ -73,39 +103,26 @@ fun CalendarDetailScreen(
                     canGoPrevious = currentMonthIndex > 0
                 )
 
-                // Days of week header
                 DaysOfWeekHeader()
 
                 Column(
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Current month grid
                     data.months.getOrNull(currentMonthIndex)?.let { monthWithWeeks ->
                         MonthGrid(
                             monthWithWeeks = monthWithWeeks,
                             modifier = Modifier.weight(1f),
                             isSelectionMode = isSelectionMode,
                             selectedDayIds = selectedDayIds,
+                            swapSourceDayId = swapSourceDayId,
                             onDayClick = { daySlot ->
-                                if (isSelectionMode) {
-                                    viewModel.toggleDaySelection(daySlot.id)
-                                } else {
-                                    onNavigateToEdit(daySlot.id)
+                                viewModel.onDayClick(daySlot.id) { id ->
+                                    onNavigateToEdit(id)
                                 }
                             },
                             onDayLongPress = { daySlot ->
-                                viewModel.toggleDaySelection(daySlot.id)
+                                viewModel.onDayLongPress(daySlot.id)
                             }
-                        )
-                    }
-
-                    // Multi-select controls
-                    if (isSelectionMode) {
-                        MultiSelectControls(
-                            selectedCount = selectedDayIds.size,
-                            onMarkAll = viewModel::markSelectedAsCompleted,
-                            onUnmarkAll = viewModel::clearSelectedCompleted,
-                            onCancel = viewModel::clearSelection
                         )
                     }
                 }
@@ -113,7 +130,6 @@ fun CalendarDetailScreen(
         }
     }
 
-    // Clear all dialog
     if (showClearAllDialog) {
         AlertDialog(
             onDismissRequest = viewModel::dismissClearAllDialog,
@@ -203,6 +219,7 @@ private fun MonthGrid(
     monthWithWeeks: MonthWithWeeks,
     isSelectionMode: Boolean,
     selectedDayIds: Set<String>,
+    swapSourceDayId: String?,
     onDayClick: (DaySlot) -> Unit,
     onDayLongPress: (DaySlot) -> Unit,
     modifier: Modifier = Modifier
@@ -212,17 +229,15 @@ private fun MonthGrid(
         contentPadding = PaddingValues(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        var i = 0
         items(monthWithWeeks.weeks) { weekWithDays ->
-            Log.d("CalendarScreen", "Mostrando semana: $i")
             WeekRow(
                 weekWithDays = weekWithDays,
                 isSelectionMode = isSelectionMode,
                 selectedDayIds = selectedDayIds,
+                swapSourceDayId = swapSourceDayId,
                 onDayClick = onDayClick,
                 onDayLongPress = onDayLongPress
             )
-            i = i + 1
         }
     }
 }
@@ -232,6 +247,7 @@ private fun WeekRow(
     weekWithDays: WeekWithDays,
     isSelectionMode: Boolean,
     selectedDayIds: Set<String>,
+    swapSourceDayId: String?,
     onDayClick: (DaySlot) -> Unit,
     onDayLongPress: (DaySlot) -> Unit
 ) {
@@ -240,11 +256,11 @@ private fun WeekRow(
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         weekWithDays.days.forEach { daySlot ->
-            Log.d("CalendarScreen", "Mostrando dia: ${daySlot.dayOfWeek.displayName}")
             DayBox(
                 daySlot = daySlot,
                 isSelectionMode = isSelectionMode,
                 isSelected = selectedDayIds.contains(daySlot.id),
+                isSwapSource = swapSourceDayId == daySlot.id,
                 onDayClick = onDayClick,
                 onDayLongPress = onDayLongPress,
                 modifier = Modifier.weight(1f)
@@ -259,21 +275,30 @@ private fun DayBox(
     daySlot: DaySlot,
     isSelectionMode: Boolean,
     isSelected: Boolean,
+    isSwapSource: Boolean,
     onDayClick: (DaySlot) -> Unit,
     onDayLongPress: (DaySlot) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val iconRes = getCategoryIcon(daySlot.categories.firstOrNull())
 
+    val borderModifier = if (isSwapSource) {
+        Modifier.border(2.dp, MaterialTheme.colorScheme.tertiary, RoundedCornerShape(12.dp))
+    } else {
+        Modifier
+    }
+
     Card(
         modifier = modifier
             .aspectRatio(1f)
+            .then(borderModifier)
             .combinedClickable(
                 onClick = { onDayClick(daySlot) },
                 onLongClick = { onDayLongPress(daySlot) }
             ),
         colors = CardDefaults.cardColors(
             containerColor = when {
+                isSwapSource -> MaterialTheme.colorScheme.tertiaryContainer
                 isSelected -> MaterialTheme.colorScheme.primaryContainer
                 daySlot.completed -> MaterialTheme.colorScheme.secondaryContainer
                 else -> AppColors.Global.CalendarBox
@@ -289,23 +314,12 @@ private fun DayBox(
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
                 tint = when {
+                    isSwapSource -> MaterialTheme.colorScheme.onTertiaryContainer
                     isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
                     daySlot.completed -> MaterialTheme.colorScheme.onSecondaryContainer
                     else -> MaterialTheme.colorScheme.surface
                 }
             )
-
-            /*if (daySlot.completed) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = "Completado",
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-            }*/
         }
     }
 }
@@ -329,17 +343,10 @@ private fun MultiSelectControls(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            //Text("$selectedCount seleccionados")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onMarkAll) {
-                    Text("Marcar")
-                }
-                TextButton(onClick = onUnmarkAll) {
-                    Text("Desmarcar")
-                }
-                TextButton(onClick = onCancel) {
-                    Text("Cancelar")
-                }
+                TextButton(onClick = onMarkAll) { Text("Marcar") }
+                TextButton(onClick = onUnmarkAll) { Text("Desmarcar") }
+                TextButton(onClick = onCancel) { Text("Cancelar") }
             }
         }
     }

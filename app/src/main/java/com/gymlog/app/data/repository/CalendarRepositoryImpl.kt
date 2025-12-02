@@ -1,5 +1,7 @@
 package com.gymlog.app.data.repository
 
+import androidx.room.withTransaction
+import com.gymlog.app.data.local.GymLogDatabase
 import com.gymlog.app.data.local.dao.*
 import com.gymlog.app.data.local.entity.*
 import com.gymlog.app.domain.model.*
@@ -15,7 +17,8 @@ class CalendarRepositoryImpl @Inject constructor(
     private val calendarDao: CalendarDao,
     private val monthDao: MonthDao,
     private val weekDao: WeekDao,
-    private val daySlotDao: DaySlotDao
+    private val daySlotDao: DaySlotDao,
+    private val database: GymLogDatabase // Inyectamos la DB para transacciones
 ) : CalendarRepository {
 
     // Calendar operations
@@ -126,6 +129,33 @@ class CalendarRepositoryImpl @Inject constructor(
         daySlotDao.clearExerciseReferences(exerciseId)
     }
 
+    // IMPLEMENTACIÓN DE SWAP (Esta es la parte que faltaba o estaba mal)
+    override suspend fun swapDaySlots(daySlotId1: String, daySlotId2: String) {
+        database.withTransaction {
+            val day1 = daySlotDao.getDayById(daySlotId1)
+            val day2 = daySlotDao.getDayById(daySlotId2)
+
+            if (day1 != null && day2 != null) {
+                // Intercambiamos solo el contenido (categorías, ejercicios, completado),
+                // manteniendo IDs, weekId y dayOfWeek originales.
+                val updatedDay1 = day1.copy(
+                    categoryList = day2.categoryList,
+                    selectedExerciseIds = day2.selectedExerciseIds,
+                    completed = day2.completed
+                )
+
+                val updatedDay2 = day2.copy(
+                    categoryList = day1.categoryList,
+                    selectedExerciseIds = day1.selectedExerciseIds,
+                    completed = day1.completed
+                )
+
+                daySlotDao.updateDaySlot(updatedDay1)
+                daySlotDao.updateDaySlot(updatedDay2)
+            }
+        }
+    }
+
     // Composite operations
     override suspend fun getCalendarWithMonths(calendarId: String): CalendarWithMonths? {
         val calendar = calendarDao.getCalendarById(calendarId)?.toDomainModel() ?: return null
@@ -149,7 +179,6 @@ class CalendarRepositoryImpl @Inject constructor(
 
     override fun getCalendarWithMonthsFlow(calendarId: String): Flow<CalendarWithMonths?> {
         return daySlotDao.getDaysForCalendar(calendarId).map { _ ->
-            // Cuando cambian los DaySlots, reconstruimos todo el CalendarWithMonths
             val calendar = calendarDao.getCalendarById(calendarId)?.toDomainModel() ?: return@map null
             val months = monthDao.getMonthsForCalendar(calendarId).first()
 
