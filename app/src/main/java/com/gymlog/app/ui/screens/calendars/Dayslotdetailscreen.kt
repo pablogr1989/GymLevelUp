@@ -1,9 +1,8 @@
 package com.gymlog.app.ui.screens.calendars
 
 import android.util.Log
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.clickable // <--- AÑADIDO
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -18,6 +17,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -27,9 +28,8 @@ import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gymlog.app.data.local.entity.DayCategory
 import com.gymlog.app.domain.model.Exercise
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInParent
+// ALIAS PARA EVITAR CONFLICTO EN LA UI
+import com.gymlog.app.domain.model.Set as GymSet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,7 +41,7 @@ fun DaySlotDetailScreen(
 ) {
     val daySlot by viewModel.daySlot.collectAsState()
     val selectedCategories by viewModel.selectedCategories.collectAsState()
-    val selectedExercises by viewModel.selectedExercises.collectAsState()
+    val selectedExercisesWithSets by viewModel.selectedExercisesWithSets.collectAsState()
     val filteredExercises by viewModel.filteredExercises.collectAsState()
     val completed by viewModel.completed.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -113,7 +113,7 @@ fun DaySlotDetailScreen(
                 )
 
                 // Botón comenzar entrenamiento
-                if (selectedExercises.isNotEmpty()) {
+                if (selectedExercisesWithSets.isNotEmpty()) {
                     Button(
                         onClick = viewModel::startTraining,
                         modifier = Modifier
@@ -147,7 +147,7 @@ fun DaySlotDetailScreen(
 
                 // Ejercicios seleccionados (expandible con drag & drop)
                 ExpandableExercisesSection(
-                    exercises = selectedExercises,
+                    exercisesWithSets = selectedExercisesWithSets,
                     onRemoveExercise = viewModel::removeExercise,
                     onExerciseClick = onNavigateToExercise,
                     onAddExercise = { showBottomSheet = true },
@@ -192,7 +192,7 @@ fun DaySlotDetailScreen(
         }
     }
 
-    // Bottom Sheet para seleccionar ejercicios
+    // Bottom Sheet para seleccionar ejercicios y sus sets
     if (showBottomSheet) {
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
@@ -200,9 +200,8 @@ fun DaySlotDetailScreen(
         ) {
             ExercisePickerBottomSheet(
                 exercises = filteredExercises,
-                selectedExercises = selectedExercises,
-                onExerciseSelect = { exercise ->
-                    viewModel.addExercise(exercise.id)
+                onExerciseSetSelect = { exercise, set ->
+                    viewModel.addExercise(exercise.id, set.id)
                     showBottomSheet = false
                 },
                 onDismiss = { showBottomSheet = false },
@@ -271,7 +270,6 @@ private fun ExpandableCategoriesSection(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header expandible
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -293,7 +291,6 @@ private fun ExpandableCategoriesSection(
                 )
             }
 
-            // Contenido expandible
             if (isExpanded) {
                 Text(
                     text = "Selecciona una o más categorías para este día",
@@ -301,7 +298,6 @@ private fun ExpandableCategoriesSection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // Grid de categorías
                 val categories = DayCategory.values().toList()
                 categories.chunked(2).forEach { rowCategories ->
                     Row(
@@ -316,7 +312,6 @@ private fun ExpandableCategoriesSection(
                                 modifier = Modifier.weight(1f)
                             )
                         }
-                        // Rellenar espacio si solo hay una categoría en la fila
                         if (rowCategories.size == 1) {
                             Spacer(modifier = Modifier.weight(1f))
                         }
@@ -329,7 +324,7 @@ private fun ExpandableCategoriesSection(
 
 @Composable
 private fun ExpandableExercisesSection(
-    exercises: List<Exercise>,
+    exercisesWithSets: List<ExerciseWithSelectedSet>,
     onRemoveExercise: (String) -> Unit,
     onExerciseClick: (String) -> Unit,
     onAddExercise: () -> Unit,
@@ -349,7 +344,6 @@ private fun ExpandableExercisesSection(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header expandible
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -369,9 +363,9 @@ private fun ExpandableExercisesSection(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    if (exercises.isNotEmpty()) {
+                    if (exercisesWithSets.isNotEmpty()) {
                         Badge {
-                            Text(exercises.size.toString())
+                            Text(exercisesWithSets.size.toString())
                         }
                     }
                 }
@@ -381,9 +375,7 @@ private fun ExpandableExercisesSection(
                 )
             }
 
-            // Contenido expandible
             if (isExpanded) {
-                // Mostrar mensaje según el estado
                 when {
                     !hasCategories -> {
                         Text(
@@ -400,7 +392,6 @@ private fun ExpandableExercisesSection(
                         )
                     }
                     else -> {
-                        // Botón añadir ejercicio
                         OutlinedButton(
                             onClick = onAddExercise,
                             modifier = Modifier.fillMaxWidth()
@@ -410,10 +401,9 @@ private fun ExpandableExercisesSection(
                             Text("Añadir ejercicio")
                         }
 
-                        // Lista de ejercicios con drag & drop
-                        if (exercises.isNotEmpty()) {
+                        if (exercisesWithSets.isNotEmpty()) {
                             DraggableExerciseList(
-                                exercises = exercises,
+                                items = exercisesWithSets,
                                 onExerciseClick = onExerciseClick,
                                 onRemoveExercise = onRemoveExercise,
                                 onMoveExercise = onMoveExercise
@@ -435,15 +425,13 @@ private fun ExpandableExercisesSection(
 
 @Composable
 private fun DraggableExerciseList(
-    exercises: List<Exercise>,
+    items: List<ExerciseWithSelectedSet>,
     onExerciseClick: (String) -> Unit,
     onRemoveExercise: (String) -> Unit,
     onMoveExercise: (Int, Int) -> Unit
 ) {
     var draggedIndex by remember { mutableStateOf<Int?>(null) }
     var targetIndex by remember { mutableStateOf<Int?>(null) }
-
-    // Guardar posiciones Y de cada card
     val cardPositions = remember { mutableStateMapOf<Int, Float>() }
     var currentDragY by remember { mutableFloatStateOf(0f) }
 
@@ -451,14 +439,14 @@ private fun DraggableExerciseList(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        exercises.forEachIndexed { index, exercise ->
+        items.forEachIndexed { index, item ->
             DraggableExerciseCard(
-                exercise = exercise,
+                item = item,
                 index = index,
                 isDragged = draggedIndex == index,
                 isDraggedOver = targetIndex == index,
-                onClick = { onExerciseClick(exercise.id) },
-                onRemove = { onRemoveExercise(exercise.id) },
+                onClick = { onExerciseClick(item.exercise.id) },
+                onRemove = { onRemoveExercise(item.compositeId) },
                 onDragStart = { positionY ->
                     draggedIndex = index
                     targetIndex = index
@@ -478,12 +466,8 @@ private fun DraggableExerciseList(
                 },
                 onDrag = { dragAmount ->
                     currentDragY += dragAmount
-
-                    // Detectar sobre qué card está el centro del item arrastrado
                     draggedIndex?.let { draggedIdx ->
-                        val draggedCenter = currentDragY + 40f // Centro del card (altura ~80dp / 2)
-
-                        // Buscar el índice del card más cercano al centro del arrastrado
+                        val draggedCenter = currentDragY + 40f
                         var closestIndex = draggedIdx
                         var minDistance = Float.MAX_VALUE
 
@@ -491,22 +475,16 @@ private fun DraggableExerciseList(
                             if (idx != draggedIdx) {
                                 val cardCenter = posY + 40f
                                 val distance = kotlin.math.abs(draggedCenter - cardCenter)
-
-                                if (distance < minDistance && distance < 60f) { // Threshold de 60dp
+                                if (distance < minDistance && distance < 60f) {
                                     minDistance = distance
                                     closestIndex = idx
                                 }
                             }
                         }
-
-                        if (closestIndex != targetIndex) {
-                            targetIndex = closestIndex
-                        }
+                        if (closestIndex != targetIndex) targetIndex = closestIndex
                     }
                 },
-                onPositionCalculated = { posY ->
-                    cardPositions[index] = posY
-                }
+                onPositionCalculated = { posY -> cardPositions[index] = posY }
             )
         }
     }
@@ -515,7 +493,7 @@ private fun DraggableExerciseList(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DraggableExerciseCard(
-    exercise: Exercise,
+    item: ExerciseWithSelectedSet,
     index: Int,
     isDragged: Boolean,
     isDraggedOver: Boolean,
@@ -546,7 +524,7 @@ private fun DraggableExerciseCard(
                 cardPositionY = coordinates.positionInParent().y
                 onPositionCalculated(cardPositionY)
             }
-            .pointerInput(exercise.id) {
+            .pointerInput(item.compositeId) {
                 detectDragGesturesAfterLongPress(
                     onDragStart = {
                         onDragStart(cardPositionY)
@@ -567,12 +545,8 @@ private fun DraggableExerciseCard(
                     }
                 )
             },
-        colors = CardDefaults.cardColors(
-            containerColor = backgroundColor
-        ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isDragged) 8.dp else 2.dp
-        )
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isDragged) 8.dp else 2.dp)
     ) {
         Row(
             modifier = Modifier
@@ -581,14 +555,10 @@ private fun DraggableExerciseCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icono de drag
             Icon(
                 imageVector = Icons.Default.DragHandle,
-                contentDescription = "Arrastrar para reordenar",
-                tint = if (isDragged)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.onSurfaceVariant,
+                contentDescription = null,
+                tint = if (isDragged) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(24.dp)
             )
 
@@ -599,33 +569,31 @@ private fun DraggableExerciseCard(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = exercise.name,
+                    text = item.exercise.name,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(
-                        text = exercise.muscleGroup.displayName,
+                        text = item.exercise.muscleGroup.displayName,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    if (exercise.currentSeries > 0 && exercise.currentReps > 0) {
+                    // Mostrar info del set seleccionado
+                    if (item.selectedSet != null) {
                         Text(
-                            text = "${exercise.currentSeries} × ${exercise.currentReps}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (exercise.currentWeightKg > 0) {
-                        Text(
-                            text = "${exercise.currentWeightKg} kg",
+                            text = "${item.selectedSet.series}×${item.selectedSet.reps} @ ${item.selectedSet.weightKg}kg",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Bold
+                        )
+                    } else {
+                        Text(
+                            text = "Set sin definir",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -645,8 +613,7 @@ private fun DraggableExerciseCard(
 @Composable
 private fun ExercisePickerBottomSheet(
     exercises: List<Exercise>,
-    selectedExercises: List<Exercise>,
-    onExerciseSelect: (Exercise) -> Unit,
+    onExerciseSetSelect: (Exercise, GymSet) -> Unit, // Usamos el alias GymSet
     onDismiss: () -> Unit,
     selectedCategories: Set<DayCategory>
 ) {
@@ -655,7 +622,6 @@ private fun ExercisePickerBottomSheet(
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -671,7 +637,6 @@ private fun ExercisePickerBottomSheet(
             }
         }
 
-        // Filtro info
         if (selectedCategories.contains(DayCategory.FULL_BODY)) {
             Text(
                 text = "Mostrando todos los ejercicios (Full Body)",
@@ -688,80 +653,79 @@ private fun ExercisePickerBottomSheet(
             )
         }
 
-        // Lista de ejercicios
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.heightIn(max = 400.dp)
         ) {
             itemsIndexed(exercises) { index, exercise ->
-                val isSelected = selectedExercises.any { it.id == exercise.id }
+                // Estado para expandir los sets de este ejercicio
+                var isSetsExpanded by remember { mutableStateOf(false) }
 
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    onClick = {
-                        if (!isSelected) {
-                            onExerciseSelect(exercise)
-                        }
-                    },
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (isSelected)
-                            MaterialTheme.colorScheme.surfaceVariant
-                        else
-                            MaterialTheme.colorScheme.surface
-                    )
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                    Column {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isSetsExpanded = !isSetsExpanded }
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = exercise.name,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = if (isSelected)
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                else
-                                    MaterialTheme.colorScheme.onSurface
-                            )
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = exercise.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
                                 Text(
                                     text = exercise.muscleGroup.displayName,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                if (exercise.currentWeightKg > 0) {
-                                    Text(
-                                        text = "${exercise.currentWeightKg} kg",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
                             }
+                            Icon(
+                                imageVector = if (isSetsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null
+                            )
                         }
 
-                        if (isSelected) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = "Seleccionado",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                        if (isSetsExpanded) {
+                            Divider()
+                            if (exercise.sets.isEmpty()) {
+                                Text(
+                                    text = "Este ejercicio no tiene sets configurados.",
+                                    modifier = Modifier.padding(16.dp),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            } else {
+                                exercise.sets.forEachIndexed { idx, set ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onExerciseSetSelect(exercise, set) }
+                                            .padding(horizontal = 24.dp, vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text("Variante #${idx + 1}", style = MaterialTheme.typography.bodySmall)
+                                        Text(
+                                            "${set.series}x${set.reps} @ ${set.weightKg}kg",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    if (idx < exercise.sets.size - 1) Divider(modifier = Modifier.padding(horizontal = 16.dp))
+                                }
+                            }
                         }
                     }
                 }
             }
         }
-
         Spacer(modifier = Modifier.height(32.dp))
     }
 }

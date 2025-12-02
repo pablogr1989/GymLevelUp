@@ -40,11 +40,13 @@ enum class SeriesAction {
 data class TrainingUiState(
     val daySlot: DaySlot? = null,
     val exercises: List<Exercise> = emptyList(),
+    // Mantenemos una lista paralela de los IDs de los sets seleccionados para cada ejercicio
+    val selectedSetIds: List<String?> = emptyList(),
     val isTrainingActive: Boolean = false,
 
     // Índices de control
     val currentExerciseIndex: Int = 0,
-    val activeSetIndex: Int = 0, // Índice del set seleccionado dentro del ejercicio
+    val activeSetIndex: Int = 0,
 
     // Estado del set activo (editable)
     val currentSeries: Int = 1,
@@ -55,7 +57,7 @@ data class TrainingUiState(
     val timerSeconds: Int = 0,
     val isTimerRunning: Boolean = false,
     val restMinutes: Int = 2,
-    val isAlarmRinging: Boolean = false, // Para mostrar botón de apagar
+    val isAlarmRinging: Boolean = false,
 
     // UI Flags
     val isSeriesButtonEnabled: Boolean = false,
@@ -76,7 +78,7 @@ class TrainingModeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(TrainingUiState())
     val uiState: StateFlow<TrainingUiState> = _uiState.asStateFlow()
 
-    // --- Legacy StateFlows (Compatibilidad UI) ---
+    // --- Legacy StateFlows ---
     val daySlot = _uiState.map { it.daySlot }.stateIn(viewModelScope, SharingStarted.Lazily, null)
     val exercises = _uiState.map { it.exercises }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     val isTrainingActive = _uiState.map { it.isTrainingActive }.stateIn(viewModelScope, SharingStarted.Lazily, false)
@@ -89,7 +91,7 @@ class TrainingModeViewModel @Inject constructor(
     val restMinutes = _uiState.map { it.restMinutes }.stateIn(viewModelScope, SharingStarted.Lazily, 2)
     val isSeriesButtonEnabled = _uiState.map { it.isSeriesButtonEnabled }.stateIn(viewModelScope, SharingStarted.Lazily, false)
     val isSeriesRunning = _uiState.map { it.isSeriesRunning }.stateIn(viewModelScope, SharingStarted.Lazily, false)
-    // ---------------------------------------------
+    // -------------------------
 
     init {
         loadDaySlotAndExercises()
@@ -100,29 +102,54 @@ class TrainingModeViewModel @Inject constructor(
             val daySlotLoaded = calendarRepository.getDayById(daySlotId)
 
             var exercisesList: List<Exercise> = emptyList()
+            var selectedSetIdsList: List<String?> = emptyList()
+
             var initialWeight = 0f
             var initialNotes = ""
+            var initialSetIndex = 0
 
             daySlotLoaded?.let { slot ->
-                val exerciseIds = slot.selectedExerciseIds
+                // Formato esperado en selectedExerciseIds: "exerciseId|setId" o solo "exerciseId" (legacy)
+                val rawIds = slot.selectedExerciseIds
+
                 val allExercises = exerciseRepository.getAllExercises().first()
                 val exerciseMap = allExercises.associateBy { it.id }
 
-                exercisesList = exerciseIds.mapNotNull { id -> exerciseMap[id] }
+                val parsedItems = rawIds.map { rawId ->
+                    val parts = rawId.split("|")
+                    val exId = parts[0]
+                    val setId = parts.getOrNull(1)
+                    Pair(exerciseMap[exId], setId)
+                }.filter { it.first != null }
 
-                exercisesList.firstOrNull()?.let { first ->
-                    val firstSet = first.sets.firstOrNull()
-                    initialWeight = firstSet?.weightKg ?: 0f
-                    initialNotes = first.notes
+                exercisesList = parsedItems.map { it.first!! }
+                selectedSetIdsList = parsedItems.map { it.second }
+
+                // Configurar estado inicial con el primer ejercicio
+                if (exercisesList.isNotEmpty()) {
+                    val firstExercise = exercisesList[0]
+                    val targetSetId = selectedSetIdsList[0]
+
+                    // Buscar índice del set seleccionado
+                    initialSetIndex = if (targetSetId != null) {
+                        firstExercise.sets.indexOfFirst { it.id == targetSetId }.coerceAtLeast(0)
+                    } else {
+                        0
+                    }
+
+                    val activeSet = firstExercise.sets.getOrNull(initialSetIndex)
+                    initialWeight = activeSet?.weightKg ?: 0f
+                    initialNotes = firstExercise.notes
                 }
             }
 
             _uiState.update { it.copy(
                 daySlot = daySlotLoaded,
                 exercises = exercisesList,
+                selectedSetIds = selectedSetIdsList,
                 currentWeight = initialWeight,
                 currentNotes = initialNotes,
-                activeSetIndex = 0
+                activeSetIndex = initialSetIndex
             )}
         }
     }
@@ -134,16 +161,27 @@ class TrainingModeViewModel @Inject constructor(
             currentSeries = 1,
             isSeriesButtonEnabled = true
         )}
+        // Aseguramos que se cargue el set correcto al iniciar
         loadCurrentExerciseData()
     }
 
     private fun loadCurrentExerciseData() {
         val state = _uiState.value
-        val exercise = state.exercises.getOrNull(state.currentExerciseIndex) ?: return
-        val activeSet = exercise.sets.getOrNull(0)
+        val exerciseIndex = state.currentExerciseIndex
+        val exercise = state.exercises.getOrNull(exerciseIndex) ?: return
+
+        // Determinar qué set usar
+        val targetSetId = state.selectedSetIds.getOrNull(exerciseIndex)
+        val setIndex = if (targetSetId != null) {
+            exercise.sets.indexOfFirst { it.id == targetSetId }.coerceAtLeast(0)
+        } else {
+            0
+        }
+
+        val activeSet = exercise.sets.getOrNull(setIndex)
 
         _uiState.update { it.copy(
-            activeSetIndex = 0,
+            activeSetIndex = setIndex,
             currentWeight = activeSet?.weightKg ?: 0f,
             currentNotes = exercise.notes
         )}
@@ -184,7 +222,6 @@ class TrainingModeViewModel @Inject constructor(
         _uiState.update { it.copy(
             isSeriesRunning = true,
             isSeriesButtonEnabled = true,
-            // timerSeconds se actualizará al FINALIZAR la serie, no al iniciarla
             isTimerRunning = false,
             isAlarmRinging = false
         )}
@@ -201,7 +238,6 @@ class TrainingModeViewModel @Inject constructor(
                 currentSeries = it.currentSeries + 1,
                 isSeriesButtonEnabled = false,
                 isSeriesRunning = false,
-                // CORRECCIÓN CLAVE: Actualizamos el tiempo justo AQUI con el valor actual de restMinutes
                 timerSeconds = it.restMinutes * 60
             )}
             startTimer()
@@ -274,7 +310,6 @@ class TrainingModeViewModel @Inject constructor(
     }
 
     fun restartTimer() {
-        // Reinicia con los minutos actuales seleccionados
         _uiState.update { it.copy(timerSeconds = it.restMinutes * 60) }
         startTimer()
     }
@@ -287,7 +322,7 @@ class TrainingModeViewModel @Inject constructor(
             isTimerRunning = false,
             timerSeconds = 0,
             isAlarmRinging = false,
-            isSeriesButtonEnabled = true // Habilita siguiente serie al parar manual
+            isSeriesButtonEnabled = true
         )}
     }
 
