@@ -1,4 +1,5 @@
 @file:OptIn(kotlinx.serialization.InternalSerializationApi::class)
+
 package com.gymlog.app.util
 
 import android.content.Context
@@ -55,16 +56,20 @@ class BackupManager @Inject constructor(
 
             // Intentar migrar formato antiguo o leer formato nuevo
             val backupData = try {
-                // Intentar leer formato nuevo directo
-                json.decodeFromString<BackupData>(jsonString)
+                // Intentamos leer formato nuevo.
+                // Al haber hecho obligatorio el campo 'sets', esto FALLARÁ con los backups antiguos.
+                val data = json.decodeFromString<BackupData>(jsonString)
+                Log.d("BackupManager", "Formato V2 detectado correctamente.")
+                data
             } catch (e: Exception) {
-                Log.d("BackupManager", "Fallo formato nuevo, intentando migración legacy: ${e.message}")
-                // Si falla, intentamos leer como estructura Legacy y transformar
+                Log.i("BackupManager", "Formato V2 falló (${e.message}). Intentando migración LEGACY...")
+                // Si falla, asumimos que es un backup antiguo y migramos
                 val legacyData = json.decodeFromString<LegacyBackupData>(jsonString)
                 migrateLegacyToNew(legacyData)
             }
 
             db.withTransaction {
+                // Limpieza total
                 db.exerciseHistoryDao().deleteAllHistory()
                 db.setDao().deleteAllSets()
                 db.exerciseDao().deleteAllExercises()
@@ -73,23 +78,24 @@ class BackupManager @Inject constructor(
                 db.monthDao().deleteAllMonths()
                 db.calendarDao().deleteAllCalendars()
 
+                // Inserción ordenada
                 backupData.calendars.forEach { db.calendarDao().insertCalendar(it) }
                 backupData.months.forEach { db.monthDao().insertMonth(it) }
                 backupData.weeks.forEach { db.weekDao().insertWeek(it) }
                 backupData.daySlots.forEach { db.daySlotDao().insertDaySlot(it) }
 
                 backupData.exercises.forEach { db.exerciseDao().insertExercise(it) }
-                // Insertar los sets migrados o nuevos
                 backupData.sets.forEach { db.setDao().insertSet(it) }
                 backupData.history.forEach { db.exerciseHistoryDao().insertHistory(it) }
             }
+            Log.i("BackupManager", "Importación finalizada con éxito.")
         } ?: throw IllegalStateException("No se pudo leer el archivo.")
     }
 
     private fun migrateLegacyToNew(legacy: LegacyBackupData): BackupData {
         val newSets = mutableListOf<SetEntity>()
         val newExercises = legacy.exercises.map { old ->
-            // Crear Set por defecto con los datos antiguos
+            // Lógica de migración: Crear Set si había datos
             if (old.currentSeries > 0 || old.currentReps > 0 || old.currentWeightKg > 0f) {
                 val setId = UUID.randomUUID().toString()
                 newSets.add(
@@ -102,7 +108,7 @@ class BackupManager @Inject constructor(
                     )
                 )
             }
-            // Mapear a entidad nueva (sin campos legacy)
+            // Mapear ejercicio limpio
             ExerciseEntity(
                 id = old.id,
                 name = old.name,
@@ -115,10 +121,12 @@ class BackupManager @Inject constructor(
             )
         }
 
+        Log.i("BackupManager", "Migración completada: ${newExercises.size} ejercicios y ${newSets.size} sets generados.")
+
         return BackupData(
             exercises = newExercises,
             sets = newSets,
-            history = legacy.history, // El historial se mantiene compatible (ignora setId por ahora)
+            history = legacy.history,
             calendars = legacy.calendars,
             months = legacy.months,
             weeks = legacy.weeks,
@@ -126,7 +134,6 @@ class BackupManager @Inject constructor(
         )
     }
 
-    // Estructuras para leer el JSON antiguo
     @Serializable
     private data class LegacyBackupData(
         val exercises: List<LegacyExerciseEntity>,

@@ -1,6 +1,7 @@
 package com.gymlog.app.ui.screens.edit
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -21,45 +22,60 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import coil.compose.AsyncImage
 import com.gymlog.app.data.local.entity.MuscleGroup
+import com.gymlog.app.domain.model.Set
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditExerciseScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToEditSet: (String, String?) -> Unit = { _, _ -> },
     viewModel: EditExerciseViewModel = hiltViewModel()
 ) {
     val name by viewModel.name.collectAsState()
     val description by viewModel.description.collectAsState()
     val selectedMuscleGroup by viewModel.selectedMuscleGroup.collectAsState()
     val imageUri by viewModel.imageUri.collectAsState()
+    val sets by viewModel.sets.collectAsState()
     val showMuscleGroupError by viewModel.showMuscleGroupError.collectAsState()
     val showNameError by viewModel.showNameError.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val navigateBack by viewModel.navigateBack.collectAsState()
-    
+    val showExitConfirmation by viewModel.showExitConfirmation.collectAsState()
+
     var showMuscleGroupDialog by remember { mutableStateOf(false) }
-    
+
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         viewModel.updateImageUri(uri)
     }
-    
+
+    // Recargar datos al volver de la pantalla de Sets
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.loadExercise()
+    }
+
+    BackHandler {
+        viewModel.onBackPressed()
+    }
+
     LaunchedEffect(navigateBack) {
         if (navigateBack) {
             onNavigateBack()
             viewModel.resetNavigation()
         }
     }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Editar ejercicio") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = { viewModel.onBackPressed() }) {
                         Icon(Icons.Default.Close, contentDescription = "Cerrar")
                     }
                 },
@@ -100,30 +116,6 @@ fun EditExerciseScreen(
                                 .clip(RoundedCornerShape(12.dp)),
                             contentScale = ContentScale.Crop
                         )
-                        
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CameraAlt,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(48.dp),
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    text = "Cambiar imagen",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
                     } else {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -144,167 +136,124 @@ fun EditExerciseScreen(
                     }
                 }
             }
-            
+
             // Basic information
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
+                    modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = "Información básica",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
+                    Text("Información básica", style = MaterialTheme.typography.titleMedium)
+
                     OutlinedTextField(
                         value = name,
                         onValueChange = viewModel::updateName,
-                        label = { Text("Nombre del ejercicio *") },
+                        label = { Text("Nombre *") },
                         modifier = Modifier.fillMaxWidth(),
-                        isError = showNameError,
-                        supportingText = if (showNameError) {
-                            { Text("El nombre es obligatorio") }
-                        } else null,
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.FitnessCenter,
-                                contentDescription = null
-                            )
-                        }
+                        isError = showNameError
                     )
-                    
+
                     OutlinedTextField(
                         value = description,
                         onValueChange = viewModel::updateDescription,
-                        label = { Text("Descripción (opcional)") },
+                        label = { Text("Descripción") },
                         modifier = Modifier.fillMaxWidth(),
-                        minLines = 3,
-                        maxLines = 5,
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Description,
-                                contentDescription = null
-                            )
-                        }
+                        minLines = 3
                     )
-                    
+
                     OutlinedCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { showMuscleGroupDialog = true },
                         border = if (showMuscleGroupError) {
-                            CardDefaults.outlinedCardBorder().copy(
-                                width = 2.dp,
-                                brush = SolidColor(MaterialTheme.colorScheme.error)
-                            )
+                            CardDefaults.outlinedCardBorder().copy(brush = SolidColor(MaterialTheme.colorScheme.error))
                         } else {
                             CardDefaults.outlinedCardBorder()
                         }
                     ) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Category,
-                                    contentDescription = null,
-                                    tint = if (selectedMuscleGroup != null) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    }
-                                )
-                                Text(
-                                    text = selectedMuscleGroup?.displayName ?: "Seleccionar grupo muscular *",
-                                    color = if (selectedMuscleGroup != null) {
-                                        MaterialTheme.colorScheme.onSurface
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    }
-                                )
-                            }
-                            Icon(
-                                imageVector = Icons.Default.ArrowDropDown,
-                                contentDescription = null
+                            Text(
+                                text = selectedMuscleGroup?.displayName ?: "Seleccionar grupo muscular *",
+                                modifier = Modifier.weight(1f)
+                            )
+                            Icon(Icons.Default.ArrowDropDown, null)
+                        }
+                    }
+                }
+            }
+
+            // SETS SECTION
+            Card(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Variantes (Sets)", style = MaterialTheme.typography.titleMedium)
+                        IconButton(onClick = {
+                            onNavigateToEditSet(name, null)
+                        }) {
+                            Icon(Icons.Default.Add, "Añadir Set")
+                        }
+                    }
+
+                    if (sets.isEmpty()) {
+                        Text(
+                            "No hay sets configurados.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        sets.forEachIndexed { index, set ->
+                            SetItem(
+                                set = set,
+                                index = index + 1,
+                                onEdit = { onNavigateToEditSet(name, set.id) },
+                                onDelete = { viewModel.deleteSet(set.id) }
                             )
                         }
                     }
-                    
-                    if (showMuscleGroupError) {
-                        Text(
-                            text = "Debes seleccionar un grupo muscular",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-                        )
-                    }
                 }
             }
-            
+
             Button(
                 onClick = viewModel::saveExercise,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
+                modifier = Modifier.fillMaxWidth(),
                 enabled = !isLoading
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Save,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Guardar cambios",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+                Text("Guardar Cambios")
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
         }
     }
-    
+
     if (showMuscleGroupDialog) {
         AlertDialog(
             onDismissRequest = { showMuscleGroupDialog = false },
-            title = { Text("Seleccionar grupo muscular") },
+            title = { Text("Grupo muscular") },
             text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    MuscleGroup.entries.forEach { group ->
+                Column {
+                    MuscleGroup.values().forEach { group ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
                                 .clickable {
                                     viewModel.selectMuscleGroup(group)
                                     showMuscleGroupDialog = false
                                 }
                                 .padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             RadioButton(
@@ -314,21 +263,67 @@ fun EditExerciseScreen(
                                     showMuscleGroupDialog = false
                                 }
                             )
-                            Text(
-                                text = group.displayName,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
+                            Text(group.displayName)
                         }
                     }
                 }
             },
+            confirmButton = { TextButton(onClick = { showMuscleGroupDialog = false }) { Text("Cancelar") } }
+        )
+    }
+
+    if (showExitConfirmation) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissExitConfirmation,
+            title = { Text("¿Salir sin guardar?") },
+            text = { Text("Tienes cambios sin guardar. ¿Estás seguro de que quieres salir?") },
             confirmButton = {
-                TextButton(
-                    onClick = { showMuscleGroupDialog = false }
-                ) {
-                    Text("Cancelar")
-                }
+                TextButton(onClick = viewModel::confirmExit) { Text("Salir") }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissExitConfirmation) { Text("Cancelar") }
             }
         )
+    }
+}
+
+@Composable
+fun SetItem(
+    set: Set,
+    index: Int,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onEdit() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text(
+                    text = "Variante #$index",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "${set.series} series × ${set.reps} reps @ ${set.weightKg} kg",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Borrar",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        }
     }
 }

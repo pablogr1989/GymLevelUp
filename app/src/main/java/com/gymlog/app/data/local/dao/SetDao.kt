@@ -12,6 +12,9 @@ interface SetDao {
     @Query("SELECT * FROM sets WHERE exerciseId = :exerciseId")
     suspend fun getSetsForExerciseSync(exerciseId: String): List<SetEntity>
 
+    @Query("SELECT * FROM sets WHERE id = :setId")
+    suspend fun getSetById(setId: String): SetEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSet(set: SetEntity)
 
@@ -23,6 +26,9 @@ interface SetDao {
 
     @Delete
     suspend fun deleteSet(set: SetEntity)
+
+    @Query("DELETE FROM sets WHERE id = :setId")
+    suspend fun deleteSetById(setId: String)
 
     @Query("DELETE FROM sets WHERE exerciseId = :exerciseId")
     suspend fun deleteSetsForExercise(exerciseId: String)

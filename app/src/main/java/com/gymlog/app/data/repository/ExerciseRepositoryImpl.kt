@@ -25,13 +25,7 @@ class ExerciseRepositoryImpl @Inject constructor(
     private val setDao: SetDao
 ) : ExerciseRepository {
 
-    // Combina ejercicios con sus sets para devolver el modelo completo
     override fun getAllExercises(): Flow<List<Exercise>> {
-        // Nota: Esta no es la forma más eficiente (N+1 queries potencialmente),
-        // pero Room no soporta relaciones en Flows fácilmente sin POJOs intermedios complejos.
-        // Dado el tamaño de la DB, esto es aceptable por ahora o podemos optimizarlo cargando todos los sets.
-        // Una mejor estrategia: cargar todos los ejercicios y map.
-
         return exerciseDao.getAllExercises().map { entities ->
             entities.map { entity ->
                 val sets = setDao.getSetsForExerciseSync(entity.id).map { it.toDomainModel() }
@@ -66,7 +60,6 @@ class ExerciseRepositoryImpl @Inject constructor(
 
     override suspend fun insertExercise(exercise: Exercise) {
         exerciseDao.insertExercise(exercise.toEntity())
-        // Insertar sets también
         exercise.sets.forEach { set ->
             setDao.insertSet(set.toEntity())
         }
@@ -80,7 +73,6 @@ class ExerciseRepositoryImpl @Inject constructor(
         exerciseDao.deleteExercise(exercise.toEntity())
     }
 
-    // Adaptador Legacy: Busca el primer set y lo actualiza, o crea uno nuevo
     override suspend fun updateExerciseStats(exerciseId: String, series: Int, reps: Int, weight: Float) {
         val sets = setDao.getSetsForExerciseSync(exerciseId)
         if (sets.isNotEmpty()) {
@@ -140,6 +132,10 @@ class ExerciseRepositoryImpl @Inject constructor(
     }
 
     // Sets operations
+    override suspend fun getSetById(setId: String): Set? {
+        return setDao.getSetById(setId)?.toDomainModel()
+    }
+
     override suspend fun insertSet(set: Set) {
         setDao.insertSet(set.toEntity())
     }
@@ -149,7 +145,7 @@ class ExerciseRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteSet(setId: String) {
-        // Implementación futura directa en DAO si es necesario
+        setDao.deleteSetById(setId)
     }
 
     // Mappers

@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gymlog.app.data.local.entity.MuscleGroup
+import com.gymlog.app.domain.model.Set
 import com.gymlog.app.domain.repository.ExerciseRepository
 import com.gymlog.app.util.ImageStorageHelper
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,6 +35,10 @@ class EditExerciseViewModel @Inject constructor(
     private val _imageUri = MutableStateFlow<Uri?>(null)
     val imageUri = _imageUri.asStateFlow()
 
+    // Nueva lista de sets para mostrar en la UI
+    private val _sets = MutableStateFlow<List<Set>>(emptyList())
+    val sets = _sets.asStateFlow()
+
     private val _currentImagePath = MutableStateFlow<String?>(null)
     private var pendingImageUri: Uri? = null
 
@@ -49,21 +54,38 @@ class EditExerciseViewModel @Inject constructor(
     private val _navigateBack = MutableStateFlow(false)
     val navigateBack = _navigateBack.asStateFlow()
 
+    private val _showExitConfirmation = MutableStateFlow(false)
+    val showExitConfirmation = _showExitConfirmation.asStateFlow()
+
+    // Estado inicial para detectar cambios
+    private var initialName = ""
+    private var initialDescription = ""
+    private var initialGroup: MuscleGroup? = null
+    private var initialImage: Uri? = null
+
     init {
         loadExercise()
     }
 
-    private fun loadExercise() {
+    // Se hace público para recargar al volver de EditSetScreen
+    fun loadExercise() {
         viewModelScope.launch {
             repository.getExerciseById(exerciseId)?.let { exercise ->
                 _name.value = exercise.name
                 _description.value = exercise.description
                 _selectedMuscleGroup.value = exercise.muscleGroup
-                _currentImagePath.value = exercise.imageUri
+                _sets.value = exercise.sets // Cargamos los sets
 
+                _currentImagePath.value = exercise.imageUri
                 if (exercise.imageUri != null) {
                     _imageUri.value = imageStorageHelper.pathToUri(exercise.imageUri)
                 }
+
+                // Guardar estado inicial
+                initialName = exercise.name
+                initialDescription = exercise.description
+                initialGroup = exercise.muscleGroup
+                initialImage = _imageUri.value
             }
         }
     }
@@ -85,6 +107,13 @@ class EditExerciseViewModel @Inject constructor(
     fun updateImageUri(uri: Uri?) {
         pendingImageUri = uri
         _imageUri.value = uri
+    }
+
+    fun deleteSet(setId: String) {
+        viewModelScope.launch {
+            repository.deleteSet(setId)
+            loadExercise() // Recargar lista
+        }
     }
 
     fun saveExercise() {
@@ -121,7 +150,31 @@ class EditExerciseViewModel @Inject constructor(
         }
     }
 
+    fun onBackPressed() {
+        if (hasChanges()) {
+            _showExitConfirmation.value = true
+        } else {
+            _navigateBack.value = true
+        }
+    }
+
+    fun confirmExit() {
+        _showExitConfirmation.value = false
+        _navigateBack.value = true
+    }
+
+    fun dismissExitConfirmation() {
+        _showExitConfirmation.value = false
+    }
+
     fun resetNavigation() {
         _navigateBack.value = false
+    }
+
+    private fun hasChanges(): Boolean {
+        return _name.value != initialName ||
+                _description.value != initialDescription ||
+                _selectedMuscleGroup.value != initialGroup ||
+                _imageUri.value != initialImage
     }
 }

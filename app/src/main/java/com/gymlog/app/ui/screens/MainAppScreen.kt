@@ -24,6 +24,7 @@ import com.gymlog.app.ui.screens.calendars.DaySlotDetailScreen
 import com.gymlog.app.ui.screens.create.CreateExerciseScreen
 import com.gymlog.app.ui.screens.detail.ExerciseDetailScreen
 import com.gymlog.app.ui.screens.edit.EditExerciseScreen
+import com.gymlog.app.ui.screens.edit.EditSetScreen
 import com.gymlog.app.ui.screens.training.TrainingModeScreen
 
 sealed class BottomNavItem(
@@ -80,6 +81,7 @@ fun MainAppScreen() {
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
+
             composable(
                 route = Screen.ExerciseDetail.route,
                 arguments = Screen.ExerciseDetail.arguments
@@ -91,11 +93,28 @@ fun MainAppScreen() {
                     }
                 )
             }
+
             composable(
                 route = Screen.EditExercise.route,
                 arguments = Screen.EditExercise.arguments
-            ) {
+            ) { backStackEntry ->
+                // Obtenemos el ID de la ruta para pasarlo al navegar
+                val exerciseId = backStackEntry.arguments?.getString("exerciseId") ?: ""
+
                 EditExerciseScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToEditSet = { _, setId ->
+                        // Usamos el exerciseId real, ignoramos el primer parametro dummy
+                        navController.navigate(Screen.EditSet.createRoute(exerciseId, setId))
+                    }
+                )
+            }
+
+            composable(
+                route = Screen.EditSet.route,
+                arguments = Screen.EditSet.arguments
+            ) {
+                EditSetScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }

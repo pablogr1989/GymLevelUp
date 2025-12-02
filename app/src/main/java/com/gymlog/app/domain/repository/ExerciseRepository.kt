@@ -16,7 +16,7 @@ interface ExerciseRepository {
     suspend fun updateExercise(exercise: Exercise)
     suspend fun deleteExercise(exercise: Exercise)
 
-    // Legacy support: Updates the FIRST set of the exercise or creates one
+    // Legacy support
     suspend fun updateExerciseStats(exerciseId: String, series: Int, reps: Int, weight: Float)
 
     suspend fun updateExerciseNotes(exerciseId: String, notes: String)
@@ -30,7 +30,8 @@ interface ExerciseRepository {
     suspend fun deleteAllHistoryForExercise(exerciseId: String)
     fun getAllHistory(): Flow<List<ExerciseHistory>>
 
-    // New methods for Sets (Future usage)
+    // Set Operations
+    suspend fun getSetById(setId: String): Set?
     suspend fun insertSet(set: Set)
     suspend fun updateSet(set: Set)
     suspend fun deleteSet(setId: String)

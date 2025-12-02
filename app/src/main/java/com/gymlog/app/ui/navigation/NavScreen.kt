@@ -36,6 +36,26 @@ sealed class Screen(
         }
     }
 
+    object EditSet : Screen(
+        route = "edit_set/{exerciseId}?setId={setId}",
+        arguments = listOf(
+            navArgument("exerciseId") { type = NavType.StringType },
+            navArgument("setId") {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            }
+        )
+    ) {
+        fun createRoute(exerciseId: String, setId: String? = null): String {
+            return if (setId != null) {
+                "edit_set/$exerciseId?setId=$setId"
+            } else {
+                "edit_set/$exerciseId"
+            }
+        }
+    }
+
     object CreateExercise : Screen(route = "create_exercise")
 
     object CalendarsList : Screen(route = "calendars_list")
@@ -84,7 +104,4 @@ sealed class Screen(
     object Timer : Screen(route = "timer")
 
     object Backup : Screen(route = "backup")
-
-    // Future screens for Phase 2 (Sets)
-    // object EditSet : Screen(...)
 }
