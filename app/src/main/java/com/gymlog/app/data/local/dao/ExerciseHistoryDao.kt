@@ -9,9 +9,6 @@ interface ExerciseHistoryDao {
     @Query("SELECT * FROM exercise_history WHERE exerciseId = :exerciseId ORDER BY timestamp DESC")
     fun getHistoryForExercise(exerciseId: String): Flow<List<ExerciseHistoryEntity>>
 
-    @Query("SELECT * FROM exercise_history WHERE exerciseId = :exerciseId ORDER BY timestamp DESC LIMIT :limit")
-    suspend fun getRecentHistoryForExercise(exerciseId: String, limit: Int = 10): List<ExerciseHistoryEntity>
-
     @Insert
     suspend fun insertHistory(history: ExerciseHistoryEntity)
 

@@ -1,10 +1,10 @@
 package com.gymlog.app.domain.model
 
-data class ExerciseHistory(
-    val id: String,
+import java.util.UUID
+
+data class Set(
+    val id: String = UUID.randomUUID().toString(),
     val exerciseId: String,
-    val setId: String? = null,
-    val timestamp: Long,
     val series: Int,
     val reps: Int,
     val weightKg: Float

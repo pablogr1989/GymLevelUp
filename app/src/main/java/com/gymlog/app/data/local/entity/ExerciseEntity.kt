@@ -6,6 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
 import kotlinx.serialization.Serializable
+
 @Entity(
     tableName = "exercises",
     indices = [
@@ -22,9 +23,6 @@ data class ExerciseEntity(
     val description: String = "",
     val muscleGroup: MuscleGroup,
     val imageUri: String? = null,
-    val currentSeries: Int = 0,
-    val currentReps: Int = 0,
-    val currentWeightKg: Float = 0f,
     val notes: String = "",
     val changeLogText: String = "",
     val createdAt: Long = System.currentTimeMillis()
@@ -38,7 +36,7 @@ enum class MuscleGroup(val displayName: String) {
     BICEPS("Biceps"),
     TRICEPS("Triceps"),
     SHOULDERS("Hombros");
-    
+
     companion object {
         fun fromDisplayName(name: String): MuscleGroup? {
             return values().find { it.displayName == name }

@@ -13,9 +13,10 @@ import com.gymlog.app.data.local.entity.*
         CalendarEntity::class,
         MonthEntity::class,
         WeekEntity::class,
-        DaySlotEntity::class
+        DaySlotEntity::class,
+        SetEntity::class // Nueva entidad
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -26,4 +27,5 @@ abstract class GymLogDatabase : RoomDatabase() {
     abstract fun monthDao(): MonthDao
     abstract fun weekDao(): WeekDao
     abstract fun daySlotDao(): DaySlotDao
+    abstract fun setDao(): SetDao
 }

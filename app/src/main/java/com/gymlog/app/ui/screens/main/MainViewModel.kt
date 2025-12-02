@@ -2,15 +2,23 @@ package com.gymlog.app.ui.screens.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.gymlog.app.data.local.entity.MuscleGroup
+import com.gymlog.app.data.local.GymLogDatabase
 import com.gymlog.app.data.local.entity.ExerciseEntity
 import com.gymlog.app.data.local.entity.ExerciseHistoryEntity
-import com.gymlog.app.data.local.GymLogDatabase
+import com.gymlog.app.data.local.entity.MuscleGroup
+import com.gymlog.app.data.local.entity.SetEntity
 import com.gymlog.app.domain.model.Exercise
 import com.gymlog.app.domain.repository.ExerciseRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 
 @HiltViewModel
@@ -28,31 +36,26 @@ class MainViewModel @Inject constructor(
     private val _showDeleteDialog = MutableStateFlow<Exercise?>(null)
     val showDeleteDialog = _showDeleteDialog.asStateFlow()
 
-    // Cachear ejercicios con distinctUntilChanged para evitar emisiones duplicadas
     private val allExercisesFlow = repository.getAllExercises()
         .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.Lazily, // Lazy en lugar de WhileSubscribed
+            started = SharingStarted.Lazily,
             initialValue = emptyList()
         )
 
-    // Optimizar filtrado con early returns y sequence para lazy evaluation
     val exercises: StateFlow<Map<MuscleGroup, List<Exercise>>> =
         combine(
             allExercisesFlow,
-            searchQuery,  // StateFlow ya tiene distinctUntilChanged incorporado
-            selectedMuscleGroup  // StateFlow ya tiene distinctUntilChanged incorporado
+            searchQuery,
+            selectedMuscleGroup
         ) { exercises, query, group ->
-            // Early return para caso común sin filtros
             when {
                 exercises.isEmpty() -> emptyMap()
                 query.isEmpty() && group == null -> {
-                    // Caso más común: sin filtros
                     exercises.groupBy { it.muscleGroup }
                 }
                 else -> {
-                    // Usar sequence para lazy evaluation
                     exercises.asSequence()
                         .filter { exercise ->
                             query.isEmpty() || exercise.name.contains(query, ignoreCase = true)
@@ -110,6 +113,7 @@ class MainViewModel @Inject constructor(
         // Limpiar toda la base de datos
         try {
             database.exerciseHistoryDao().deleteAllHistory()
+            database.setDao().deleteAllSets() // Nuevo: Limpiar sets
             database.exerciseDao().deleteAllExercises()
             database.daySlotDao().deleteAllDaySlots()
             database.weekDao().deleteAllWeeks()
@@ -123,365 +127,211 @@ class MainViewModel @Inject constructor(
         android.util.Log.d("MainViewModel", "Starting database prepopulation")
         val exerciseDao = database.exerciseDao()
         val historyDao = database.exerciseHistoryDao()
+        val setDao = database.setDao()
 
-        val sampleExercises = listOf(
-            ExerciseEntity(
-                id = "ex_prensa_inclinada_discos",
-                name = "Prensa inclinada discos",
-                description = "Ejercicio principal para cuádriceps y glúteos, trabaja también femorales.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 150f
-            ),
-            ExerciseEntity(
-                id = "ex_sentadilla_multipower",
-                name = "Sentadilla multipower",
-                description = "Ejercicio guiado para cuádriceps, glúteos y estabilidad del core.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 40f
-            ),
-            ExerciseEntity(
-                id = "ex_sentadilla_barra",
-                name = "Sentadilla con barra",
-                description = "Ejercicio compuesto para cuádriceps, glúteos y core.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 3,
-                currentReps = 10,
-                currentWeightKg = 70f
-            ),
-            ExerciseEntity(
-                id = "ex_sentadilla_bulgara",
-                name = "Sentadilla búlgara",
-                description = "Ejercicio unilateral para cuádriceps, glúteos y equilibrio.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 10f
-            ),
-            ExerciseEntity(
-                id = "ex_zancada_multipower",
-                name = "Zancada multipower",
-                description = "Fortalece cuádriceps, glúteos y estabilidad de cadera.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 35f
-            ),
-            ExerciseEntity(
-                id = "ex_zancada_pasos",
-                name = "Zancada con pasos",
-                description = "Ejercicio funcional que trabaja cuádriceps y glúteos.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 2,
-                currentReps = 12,
-                currentWeightKg = 20f
-            ),
-            ExerciseEntity(
-                id = "ex_peso_muerto_barra",
-                name = "Peso muerto convencional barra",
-                description = "Ejercicio compuesto que trabaja glúteos, isquiotibiales y espalda baja.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 3,
-                currentReps = 10,
-                currentWeightKg = 30f
-            ),
-            ExerciseEntity(
-                id = "ex_peso_muerto_mancuernas",
-                name = "Peso muerto mancuernas",
-                description = "Variante del peso muerto para isquiotibiales y glúteos.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 40f
-            ),
-            ExerciseEntity(
-                id = "ex_peso_muerto_rumano",
-                name = "Peso muerto rumano",
-                description = "Ejercicio para isquiotibiales y glúteos, mejora la cadena posterior.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 3,
-                currentReps = 10,
-                currentWeightKg = 30f
-            ),
-            ExerciseEntity(
-                id = "ex_extension_cuadriceps",
-                name = "Extensión de cuádriceps",
-                description = "Ejercicio de aislamiento para fortalecer los cuádriceps.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 60f
-            ),
-            ExerciseEntity(
-                id = "ex_curl_isquio_tumbado",
-                name = "Curl isquio tumbado",
-                description = "Ejercicio de aislamiento para fortalecer los isquiotibiales.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 31f
-            ),
-            ExerciseEntity(
-                id = "ex_aductor_maquina",
-                name = "Aductor máquina",
-                description = "Trabaja los músculos aductores internos del muslo.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 3,
-                currentReps = 10,
-                currentWeightKg = 60f
-            ),
-            ExerciseEntity(
-                id = "ex_abductor_maquina",
-                name = "Abductor máquina",
-                description = "Fortalece los músculos abductores, responsables de la apertura de caderas.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 2,
-                currentReps = 10,
-                currentWeightKg = 60f
-            ),
-            ExerciseEntity(
-                id = "ex_gemelo_mancuerna",
-                name = "Gemelo con mancuernas",
-                description = "Ejercicio para fortalecer los gemelos y mejorar la estabilidad del tobillo.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 44f
-            ),
-            ExerciseEntity(
-                id = "ex_gemelo_maquina",
-                name = "Gemelo máquina",
-                description = "Aísla los músculos de los gemelos para mejorar fuerza y volumen.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 3,
-                currentReps = 25,
-                currentWeightKg = 40f
-            ),
-            ExerciseEntity(
-                id = "ex_soleo_maquina",
-                name = "Sóleo máquina",
-                description = "Fortalece el sóleo, parte profunda del gemelo.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 3,
-                currentReps = 25,
-                currentWeightKg = 30f
-            ),
-            ExerciseEntity(
-                id = "ex_hack_squat",
-                name = "Hack squat",
-                description = "Ejercicio guiado para cuádriceps, glúteos y femorales.",
-                muscleGroup = MuscleGroup.LEGS,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 110f
-            ),
-            ExerciseEntity(
-                id = "ex_hip_thrust_barra",
-                name = "Hip Thrust barra",
-                description = "Ejercicio clave para activar y fortalecer los glúteos.",
-                muscleGroup = MuscleGroup.GLUTES,
-                currentSeries = 4,
-                currentReps = 12,
-                currentWeightKg = 30f
-            ),
-            ExerciseEntity(
-                id = "ex_hip_thrust_mancuerna",
-                name = "Hip Thrust mancuerna",
-                description = "Variante con mancuernas para trabajar glúteos e isquiotibiales.",
-                muscleGroup = MuscleGroup.GLUTES,
-                currentSeries = 3,
-                currentReps = 8,
-                currentWeightKg = 20f
-            ),
-            ExerciseEntity(
-                id = "ex_puente_gluteo_unilateral",
-                name = "Puente glúteo unilateral mancuerna",
-                description = "Ejercicio unilateral que fortalece los glúteos y la estabilidad de cadera.",
-                muscleGroup = MuscleGroup.GLUTES,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 14f
-            ),
-            ExerciseEntity(
-                id = "ex_curl_biceps_mancuernas",
-                name = "Curl bíceps mancuernas",
-                description = "Ejercicio básico de aislamiento para fortalecer los bíceps.",
-                muscleGroup = MuscleGroup.BICEPS,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 25f
-            ),
-            ExerciseEntity(
-                id = "ex_curl_biceps_martillo",
-                name = "Curl bíceps martillo",
-                description = "Ejercicio para trabajar braquial y bíceps con agarre neutro.",
-                muscleGroup = MuscleGroup.BICEPS,
-                currentSeries = 4,
-                currentReps = 12,
-                currentWeightKg = 25f
-            ),
-            ExerciseEntity(
-                id = "ex_curl_biceps_scott",
-                name = "Curl bíceps Scott",
-                description = "Aísla el bíceps y mejora la fuerza en la parte baja del movimiento.",
-                muscleGroup = MuscleGroup.BICEPS,
-                currentSeries = 4,
-                currentReps = 10,
-                currentWeightKg = 15f
-            ),
-            ExerciseEntity(
-                id = "ex_triceps_cuerda_polea",
-                name = "Extensión tríceps cuerda polea",
-                description = "Ejercicio de aislamiento para desarrollar la parte posterior del brazo.",
-                muscleGroup = MuscleGroup.TRICEPS,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 45f
-            ),
-            ExerciseEntity(
-                id = "ex_triceps_overhead_polea_baja",
-                name = "Tríceps overhead polea baja",
-                description = "Ejercicio que estira y activa la cabeza larga del tríceps.",
-                muscleGroup = MuscleGroup.TRICEPS,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 15f
-            ),
-            ExerciseEntity(
-                id = "ex_triceps_overhead_mancuernas",
-                name = "Tríceps overhead mancuernas",
-                description = "Fortalece la cabeza larga del tríceps con mancuernas.",
-                muscleGroup = MuscleGroup.TRICEPS,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 20f
-            ),
-            ExerciseEntity(
-                id = "ex_press_pecho_plano_maquina",
-                name = "Press pecho plano máquina",
-                description = "Ejercicio principal para pectorales, tríceps y deltoides frontales.",
-                muscleGroup = MuscleGroup.CHEST,
-                currentSeries = 3,
-                currentReps = 10,
-                currentWeightKg = 90f
-            ),
-            ExerciseEntity(
-                id = "ex_press_pecho_inclinado_maquina",
-                name = "Press pecho inclinado máquina",
-                description = "Trabaja la parte superior del pecho y los deltoides frontales.",
-                muscleGroup = MuscleGroup.CHEST,
-                currentSeries = 3,
-                currentReps = 10,
-                currentWeightKg = 60f
-            ),
-            ExerciseEntity(
-                id = "ex_press_banca_barra",
-                name = "Press banca barra",
-                description = "Ejercicio compuesto para pectorales, hombros y tríceps.",
-                muscleGroup = MuscleGroup.CHEST,
-                currentSeries = 4,
-                currentReps = 10,
-                currentWeightKg = 40f
-            ),
-            ExerciseEntity(
-                id = "ex_cruce_poleas",
-                name = "Cruce de poleas",
-                description = "Ejercicio de aislamiento para definir y contraer los pectorales.",
-                muscleGroup = MuscleGroup.CHEST,
-                currentSeries = 3,
-                currentReps = 10,
-                currentWeightKg = 25f
-            ),
-            ExerciseEntity(
-                id = "ex_jalon_polea_prono",
-                name = "Jalón polea agarre prono",
-                description = "Ejercicio para dorsales y parte media de la espalda.",
-                muscleGroup = MuscleGroup.BACK,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 71f
-            ),
-            ExerciseEntity(
-                id = "ex_remo_gironda",
-                name = "Remo gironda",
-                description = "Desarrolla el grosor y densidad de la espalda media.",
-                muscleGroup = MuscleGroup.BACK,
-                currentSeries = 3,
-                currentReps = 10,
-                currentWeightKg = 65f
-            ),
-            ExerciseEntity(
-                id = "ex_remo_pecho_apoyado",
-                name = "Remo pecho apoyado máquina",
-                description = "Aísla la espalda media y reduce el estrés lumbar.",
-                muscleGroup = MuscleGroup.BACK,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 80f
-            ),
-            ExerciseEntity(
-                id = "ex_pull_over_polea",
-                name = "Pull over polea alta",
-                description = "Ejercicio de aislamiento para dorsales y serrato anterior.",
-                muscleGroup = MuscleGroup.BACK,
-                currentSeries = 3,
-                currentReps = 12,
-                currentWeightKg = 45f
-            ),
-            ExerciseEntity(
-                id = "ex_press_militar_maquina",
-                name = "Press militar máquina",
-                description = "Ejercicio compuesto para los deltoides y tríceps.",
-                muscleGroup = MuscleGroup.SHOULDERS,
-                currentSeries = 3,
-                currentReps = 10,
-                currentWeightKg = 40f
-            ),
-            ExerciseEntity(
-                id = "ex_elevaciones_laterales_mancuerna",
-                name = "Elevaciones laterales mancuernas",
-                description = "Ejercicio para desarrollar los deltoides laterales y forma del hombro.",
-                muscleGroup = MuscleGroup.SHOULDERS,
-                currentSeries = 3,
-                currentReps = 10,
-                currentWeightKg = 15f
-            ),
-            ExerciseEntity(
-                id = "ex_deltoides_posterior_maquina",
-                name = "Deltoides posterior máquina",
-                description = "Aísla la parte posterior del hombro, mejorando postura y equilibrio muscular.",
-                muscleGroup = MuscleGroup.SHOULDERS,
-                currentSeries = 3,
-                currentReps = 10,
-                currentWeightKg = 18f
-            ),
-            ExerciseEntity(
-                id = "ex_pajaros_sentado",
-                name = "Pájaros sentado mancuernas",
-                description = "Ejercicio de aislamiento para deltoides posteriores.",
-                muscleGroup = MuscleGroup.SHOULDERS,
-                currentSeries = 4,
-                currentReps = 10,
-                currentWeightKg = 5f
-            ),
+        // Helper class para mantener los datos organizados antes de dividirlos
+        data class LegacySample(
+            val id: String,
+            val name: String,
+            val description: String,
+            val muscleGroup: MuscleGroup,
+            val series: Int,
+            val reps: Int,
+            val weight: Float
         )
 
-        // Insertar ejercicios de ejemplo
-        sampleExercises.forEach { exercise ->
-            android.util.Log.d("MainViewModel", "Inserting exercise: ${exercise.name}")
-            exerciseDao.insertExercise(exercise)
+        val sampleExercises = listOf(
+            LegacySample(
+                "ex_prensa_inclinada_discos", "Prensa inclinada discos",
+                "Ejercicio principal para cuádriceps y glúteos, trabaja también femorales.", MuscleGroup.LEGS, 3, 12, 150f
+            ),
+            LegacySample(
+                "ex_sentadilla_multipower", "Sentadilla multipower",
+                "Ejercicio guiado para cuádriceps, glúteos y estabilidad del core.", MuscleGroup.LEGS, 3, 12, 40f
+            ),
+            LegacySample(
+                "ex_sentadilla_barra", "Sentadilla con barra",
+                "Ejercicio compuesto para cuádriceps, glúteos y core.", MuscleGroup.LEGS, 3, 10, 70f
+            ),
+            LegacySample(
+                "ex_sentadilla_bulgara", "Sentadilla búlgara",
+                "Ejercicio unilateral para cuádriceps, glúteos y equilibrio.", MuscleGroup.LEGS, 3, 12, 10f
+            ),
+            LegacySample(
+                "ex_zancada_multipower", "Zancada multipower",
+                "Fortalece cuádriceps, glúteos y estabilidad de cadera.", MuscleGroup.LEGS, 3, 12, 35f
+            ),
+            LegacySample(
+                "ex_zancada_pasos", "Zancada con pasos",
+                "Ejercicio funcional que trabaja cuádriceps y glúteos.", MuscleGroup.LEGS, 2, 12, 20f
+            ),
+            LegacySample(
+                "ex_peso_muerto_barra", "Peso muerto convencional barra",
+                "Ejercicio compuesto que trabaja glúteos, isquiotibiales y espalda baja.", MuscleGroup.LEGS, 3, 10, 30f
+            ),
+            LegacySample(
+                "ex_peso_muerto_mancuernas", "Peso muerto mancuernas",
+                "Variante del peso muerto para isquiotibiales y glúteos.", MuscleGroup.LEGS, 3, 12, 40f
+            ),
+            LegacySample(
+                "ex_peso_muerto_rumano", "Peso muerto rumano",
+                "Ejercicio para isquiotibiales y glúteos, mejora la cadena posterior.", MuscleGroup.LEGS, 3, 10, 30f
+            ),
+            LegacySample(
+                "ex_extension_cuadriceps", "Extensión de cuádriceps",
+                "Ejercicio de aislamiento para fortalecer los cuádriceps.", MuscleGroup.LEGS, 3, 12, 60f
+            ),
+            LegacySample(
+                "ex_curl_isquio_tumbado", "Curl isquio tumbado",
+                "Ejercicio de aislamiento para fortalecer los isquiotibiales.", MuscleGroup.LEGS, 3, 12, 31f
+            ),
+            LegacySample(
+                "ex_aductor_maquina", "Aductor máquina",
+                "Trabaja los músculos aductores internos del muslo.", MuscleGroup.LEGS, 3, 10, 60f
+            ),
+            LegacySample(
+                "ex_abductor_maquina", "Abductor máquina",
+                "Fortalece los músculos abductores, responsables de la apertura de caderas.", MuscleGroup.LEGS, 2, 10, 60f
+            ),
+            LegacySample(
+                "ex_gemelo_mancuerna", "Gemelo con mancuernas",
+                "Ejercicio para fortalecer los gemelos y mejorar la estabilidad del tobillo.", MuscleGroup.LEGS, 3, 12, 44f
+            ),
+            LegacySample(
+                "ex_gemelo_maquina", "Gemelo máquina",
+                "Aísla los músculos de los gemelos para mejorar fuerza y volumen.", MuscleGroup.LEGS, 3, 25, 40f
+            ),
+            LegacySample(
+                "ex_soleo_maquina", "Sóleo máquina",
+                "Fortalece el sóleo, parte profunda del gemelo.", MuscleGroup.LEGS, 3, 25, 30f
+            ),
+            LegacySample(
+                "ex_hack_squat", "Hack squat",
+                "Ejercicio guiado para cuádriceps, glúteos y femorales.", MuscleGroup.LEGS, 3, 12, 110f
+            ),
+            LegacySample(
+                "ex_hip_thrust_barra", "Hip Thrust barra",
+                "Ejercicio clave para activar y fortalecer los glúteos.", MuscleGroup.GLUTES, 4, 12, 30f
+            ),
+            LegacySample(
+                "ex_hip_thrust_mancuerna", "Hip Thrust mancuerna",
+                "Variante con mancuernas para trabajar glúteos e isquiotibiales.", MuscleGroup.GLUTES, 3, 8, 20f
+            ),
+            LegacySample(
+                "ex_puente_gluteo_unilateral", "Puente glúteo unilateral mancuerna",
+                "Ejercicio unilateral que fortalece los glúteos y la estabilidad de cadera.", MuscleGroup.GLUTES, 3, 12, 14f
+            ),
+            LegacySample(
+                "ex_curl_biceps_mancuernas", "Curl bíceps mancuernas",
+                "Ejercicio básico de aislamiento para fortalecer los bíceps.", MuscleGroup.BICEPS, 3, 12, 25f
+            ),
+            LegacySample(
+                "ex_curl_biceps_martillo", "Curl bíceps martillo",
+                "Ejercicio para trabajar braquial y bíceps con agarre neutro.", MuscleGroup.BICEPS, 4, 12, 25f
+            ),
+            LegacySample(
+                "ex_curl_biceps_scott", "Curl bíceps Scott",
+                "Aísla el bíceps y mejora la fuerza en la parte baja del movimiento.", MuscleGroup.BICEPS, 4, 10, 15f
+            ),
+            LegacySample(
+                "ex_triceps_cuerda_polea", "Extensión tríceps cuerda polea",
+                "Ejercicio de aislamiento para desarrollar la parte posterior del brazo.", MuscleGroup.TRICEPS, 3, 12, 45f
+            ),
+            LegacySample(
+                "ex_triceps_overhead_polea_baja", "Tríceps overhead polea baja",
+                "Ejercicio que estira y activa la cabeza larga del tríceps.", MuscleGroup.TRICEPS, 3, 12, 15f
+            ),
+            LegacySample(
+                "ex_triceps_overhead_mancuernas", "Tríceps overhead mancuernas",
+                "Fortalece la cabeza larga del tríceps con mancuernas.", MuscleGroup.TRICEPS, 3, 12, 20f
+            ),
+            LegacySample(
+                "ex_press_pecho_plano_maquina", "Press pecho plano máquina",
+                "Ejercicio principal para pectorales, tríceps y deltoides frontales.", MuscleGroup.CHEST, 3, 10, 90f
+            ),
+            LegacySample(
+                "ex_press_pecho_inclinado_maquina", "Press pecho inclinado máquina",
+                "Trabaja la parte superior del pecho y los deltoides frontales.", MuscleGroup.CHEST, 3, 10, 60f
+            ),
+            LegacySample(
+                "ex_press_banca_barra", "Press banca barra",
+                "Ejercicio compuesto para pectorales, hombros y tríceps.", MuscleGroup.CHEST, 4, 10, 40f
+            ),
+            LegacySample(
+                "ex_cruce_poleas", "Cruce de poleas",
+                "Ejercicio de aislamiento para definir y contraer los pectorales.", MuscleGroup.CHEST, 3, 10, 25f
+            ),
+            LegacySample(
+                "ex_jalon_polea_prono", "Jalón polea agarre prono",
+                "Ejercicio para dorsales y parte media de la espalda.", MuscleGroup.BACK, 3, 12, 71f
+            ),
+            LegacySample(
+                "ex_remo_gironda", "Remo gironda",
+                "Desarrolla el grosor y densidad de la espalda media.", MuscleGroup.BACK, 3, 10, 65f
+            ),
+            LegacySample(
+                "ex_remo_pecho_apoyado", "Remo pecho apoyado máquina",
+                "Aísla la espalda media y reduce el estrés lumbar.", MuscleGroup.BACK, 3, 12, 80f
+            ),
+            LegacySample(
+                "ex_pull_over_polea", "Pull over polea alta",
+                "Ejercicio de aislamiento para dorsales y serrato anterior.", MuscleGroup.BACK, 3, 12, 45f
+            ),
+            LegacySample(
+                "ex_press_militar_maquina", "Press militar máquina",
+                "Ejercicio compuesto para los deltoides y tríceps.", MuscleGroup.SHOULDERS, 3, 10, 40f
+            ),
+            LegacySample(
+                "ex_elevaciones_laterales_mancuerna", "Elevaciones laterales mancuernas",
+                "Ejercicio para desarrollar los deltoides laterales y forma del hombro.", MuscleGroup.SHOULDERS, 3, 10, 15f
+            ),
+            LegacySample(
+                "ex_deltoides_posterior_maquina", "Deltoides posterior máquina",
+                "Aísla la parte posterior del hombro, mejorando postura y equilibrio muscular.", MuscleGroup.SHOULDERS, 3, 10, 18f
+            ),
+            LegacySample(
+                "ex_pajaros_sentado", "Pájaros sentado mancuernas",
+                "Ejercicio de aislamiento para deltoides posteriores.", MuscleGroup.SHOULDERS, 4, 10, 5f
+            )
+        )
 
-            // Add initial history entry for each exercise
-            if (exercise.currentSeries > 0) {
+        // Insertar ejercicios y sets
+        sampleExercises.forEach { sample ->
+            android.util.Log.d("MainViewModel", "Inserting exercise: ${sample.name}")
+
+            // 1. Insertar Ejercicio (Sin stats)
+            exerciseDao.insertExercise(
+                ExerciseEntity(
+                    id = sample.id,
+                    name = sample.name,
+                    description = sample.description,
+                    muscleGroup = sample.muscleGroup,
+                    createdAt = System.currentTimeMillis()
+                )
+            )
+
+            // 2. Insertar Set Inicial (Con stats)
+            if (sample.series > 0) {
+                val setId = UUID.randomUUID().toString()
+
+                setDao.insertSet(
+                    SetEntity(
+                        id = setId,
+                        exerciseId = sample.id,
+                        series = sample.series,
+                        reps = sample.reps,
+                        weightKg = sample.weight
+                    )
+                )
+
+                // 3. Insertar Historial (Vinculado al Set)
                 historyDao.insertHistory(
                     ExerciseHistoryEntity(
-                        exerciseId = exercise.id,
-                        series = exercise.currentSeries,
-                        reps = exercise.currentReps,
-                        weightKg = exercise.currentWeightKg,
+                        exerciseId = sample.id,
+                        setId = setId,
+                        series = sample.series,
+                        reps = sample.reps,
+                        weightKg = sample.weight,
                         timestamp = System.currentTimeMillis()
                     )
                 )

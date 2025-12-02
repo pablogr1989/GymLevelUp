@@ -38,9 +38,6 @@ interface ExerciseDao {
     @Query("DELETE FROM exercises")
     suspend fun deleteAllExercises()
 
-    @Query("UPDATE exercises SET currentSeries = :series, currentReps = :reps, currentWeightKg = :weight WHERE id = :exerciseId")
-    suspend fun updateExerciseStats(exerciseId: String, series: Int, reps: Int, weight: Float)
-
     @Query("UPDATE exercises SET notes = :notes WHERE id = :exerciseId")
     suspend fun updateExerciseNotes(exerciseId: String, notes: String)
 

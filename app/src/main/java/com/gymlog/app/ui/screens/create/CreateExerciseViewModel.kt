@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.gymlog.app.data.local.entity.MuscleGroup
 import com.gymlog.app.domain.model.Exercise
 import com.gymlog.app.domain.model.ExerciseHistory
+import com.gymlog.app.domain.model.Set
 import com.gymlog.app.domain.repository.ExerciseRepository
 import com.gymlog.app.util.InputValidator.validateFloat
 import com.gymlog.app.util.InputValidator.validateInt
@@ -110,30 +111,47 @@ class CreateExerciseViewModel @Inject constructor(
             val repsValue = _reps.value.toIntOrNull() ?: 0
             val weightValue = _weight.value.toFloatOrNull() ?: 0f
 
+            // Creamos el set inicial si hay datos
+            val initialSets = if (seriesValue > 0 || repsValue > 0 || weightValue > 0f) {
+                listOf(
+                    Set(
+                        id = UUID.randomUUID().toString(),
+                        exerciseId = exerciseId,
+                        series = seriesValue,
+                        reps = repsValue,
+                        weightKg = weightValue
+                    )
+                )
+            } else {
+                emptyList()
+            }
+
+            // Creamos el ejercicio usando la nueva estructura (lista de sets)
             val exercise = Exercise(
                 id = exerciseId,
                 name = _name.value.trim(),
                 description = _description.value.trim(),
                 muscleGroup = _selectedMuscleGroup.value!!,
                 imageUri = _imageUri.value?.toString(),
-                currentSeries = seriesValue,
-                currentReps = repsValue,
-                currentWeightKg = weightValue,
+                sets = initialSets, // Pasamos la lista de sets aquí
                 createdAt = System.currentTimeMillis()
             )
 
             repository.insertExercise(exercise)
 
             // Add initial history entry if stats were provided
-            if (seriesValue > 0 && repsValue > 0) {
+            if (initialSets.isNotEmpty()) {
+                // Usamos los datos del primer set para el historial
+                val firstSet = initialSets.first()
                 repository.insertHistory(
                     ExerciseHistory(
                         id = UUID.randomUUID().toString(),
                         exerciseId = exerciseId,
+                        setId = firstSet.id, // Vinculamos al set creado
                         timestamp = System.currentTimeMillis(),
-                        series = seriesValue,
-                        reps = repsValue,
-                        weightKg = weightValue
+                        series = firstSet.series,
+                        reps = firstSet.reps,
+                        weightKg = firstSet.weightKg
                     )
                 )
             }
