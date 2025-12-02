@@ -7,174 +7,196 @@ import android.content.Context
 import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gymlog.app.util.InputValidator.validateInt
+import com.gymlog.app.util.TrainingConstants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+data class TimerUiState(
+    val hours: String = "00",
+    val minutes: String = "00",
+    val seconds: String = "30",
+    val isRunning: Boolean = false,
+    val totalSeconds: Int = 30,
+    val timeFinished: Boolean = false,
+    // Variables temporales para guardar la configuración al iniciar
+    val savedHours: String = "00",
+    val savedMinutes: String = "00",
+    val savedSeconds: String = "30"
+)
 
 @HiltViewModel
 class TimerViewModel @Inject constructor(
     private val application: Application
 ) : ViewModel() {
 
-    private val _hours = MutableStateFlow("00")
-    val hours = _hours.asStateFlow()
+    // Fuente de verdad única
+    private val _uiState = MutableStateFlow(TimerUiState())
+    val uiState = _uiState.asStateFlow()
 
-    private val _minutes = MutableStateFlow("00")
-    val minutes = _minutes.asStateFlow()
+    // --- Legacy StateFlows (Compatibilidad con UI existente) ---
+    // Mapean directamente desde el UI State. Si el State cambia, estos emiten.
+    val hours = _uiState.map { it.hours }
+        .stateIn(viewModelScope, SharingStarted.Lazily, "00")
 
-    private val _seconds = MutableStateFlow("30")
-    val seconds = _seconds.asStateFlow()
+    val minutes = _uiState.map { it.minutes }
+        .stateIn(viewModelScope, SharingStarted.Lazily, "00")
 
-    private val _isRunning = MutableStateFlow(false)
-    val isRunning = _isRunning.asStateFlow()
+    val seconds = _uiState.map { it.seconds }
+        .stateIn(viewModelScope, SharingStarted.Lazily, "30")
 
-    private val _totalSeconds = MutableStateFlow(30)
-    val totalSeconds = _totalSeconds.asStateFlow()
+    val isRunning = _uiState.map { it.isRunning }
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
 
-    private val _timeFinished = MutableStateFlow(false)
-    val timeFinished = _timeFinished.asStateFlow()
-
-
-    private val _saveHours = MutableStateFlow("00")
-    val saveHours = _saveHours.asStateFlow()
-
-    private val _saveMinutes = MutableStateFlow("00")
-    val saveMinutes = _saveMinutes.asStateFlow()
-
-    private val _saveSeconds = MutableStateFlow("30")
-    val saveSeconds = _saveSeconds.asStateFlow()
+    val timeFinished = _uiState.map { it.timeFinished }
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
+    // -----------------------------------------------------------
 
     private var timerJob: Job? = null
 
     fun updateHours(value: String) {
-        if (value.length <= 2 && (value.isEmpty() || value.all { it.isDigit() })) {
-            val intValue = value.toIntOrNull() ?: 0
-            if (intValue in 0..23) {
-                _hours.value = value.padStart(2, '0')
-            }
+        if (value.validateInt(0..23, 2)) {
+            _uiState.update { it.copy(hours = value.padStart(2, '0')) }
         }
     }
 
     fun updateMinutes(value: String) {
-        if (value.length <= 2 && (value.isEmpty() || value.all { it.isDigit() })) {
-            val intValue = value.toIntOrNull() ?: 0
-            if (intValue in 0..59) {
-                _minutes.value = value.padStart(2, '0')
-            }
+        if (value.validateInt(0..59, 2)) {
+            _uiState.update { it.copy(minutes = value.padStart(2, '0')) }
         }
     }
 
     fun updateSeconds(value: String) {
-        if (value.length <= 2 && (value.isEmpty() || value.all { it.isDigit() })) {
-            val intValue = value.toIntOrNull() ?: 0
-            if (intValue in 0..59) {
-                _seconds.value = value.padStart(2, '0')
-            }
+        if (value.validateInt(0..59, 2)) {
+            _uiState.update { it.copy(seconds = value.padStart(2, '0')) }
         }
     }
 
     fun startTimer() {
-        if (_isRunning.value) return
+        if (_uiState.value.isRunning) return
 
-        _saveHours.value = _hours.value
-        _saveMinutes.value = _minutes.value
-        _saveSeconds.value = _seconds.value
+        // Guardamos la configuración actual y calculamos total
+        val currentState = _uiState.value
+        val h = currentState.hours.toIntOrNull() ?: 0
+        val m = currentState.minutes.toIntOrNull() ?: 0
+        val s = currentState.seconds.toIntOrNull() ?: 0
+        val total = h * 3600 + m * 60 + s
 
-        val h = _hours.value.toIntOrNull() ?: 0
-        val m = _minutes.value.toIntOrNull() ?: 0
-        val s = _seconds.value.toIntOrNull() ?: 0
+        if (total <= 0) return
 
-        _totalSeconds.value = h * 3600 + m * 60 + s
-
-        if (_totalSeconds.value <= 0) return
-
-        _isRunning.value = true
-        _timeFinished.value = false
+        _uiState.update {
+            it.copy(
+                isRunning = true,
+                timeFinished = false,
+                totalSeconds = total,
+                savedHours = it.hours,
+                savedMinutes = it.minutes,
+                savedSeconds = it.seconds
+            )
+        }
 
         timerJob = viewModelScope.launch {
-            while (_totalSeconds.value > 0 && _isRunning.value) {
+            while (_uiState.value.totalSeconds > 0 && _uiState.value.isRunning) {
                 delay(1000)
-                _totalSeconds.value -= 1
 
-                val remaining = _totalSeconds.value
-                _hours.value = (remaining / 3600).toString().padStart(2, '0')
-                _minutes.value = ((remaining % 3600) / 60).toString().padStart(2, '0')
-                _seconds.value = (remaining % 60).toString().padStart(2, '0')
+                _uiState.update { state ->
+                    val newTotal = state.totalSeconds - 1
+                    // Calculamos h/m/s restantes para mostrarlos
+                    val rHours = (newTotal / 3600).toString().padStart(2, '0')
+                    val rMinutes = ((newTotal % 3600) / 60).toString().padStart(2, '0')
+                    val rSeconds = (newTotal % 60).toString().padStart(2, '0')
+
+                    state.copy(
+                        totalSeconds = newTotal,
+                        hours = rHours,
+                        minutes = rMinutes,
+                        seconds = rSeconds
+                    )
+                }
             }
 
-            if (_totalSeconds.value == 0) {
-                _timeFinished.value = true
-                _isRunning.value = false
+            if (_uiState.value.totalSeconds == 0) {
+                _uiState.update { it.copy(timeFinished = true, isRunning = false) }
                 startAlarmService()
             }
         }
     }
 
     fun pauseTimer() {
-        _isRunning.value = false
+        _uiState.update { it.copy(isRunning = false) }
         timerJob?.cancel()
     }
 
     fun resetTimer() {
-        _isRunning.value = false
         timerJob?.cancel()
-        _hours.value = "00"
-        _minutes.value = "00"
-        _seconds.value = "30"
-        _totalSeconds.value = 30
-        _timeFinished.value = false
+        _uiState.update {
+            it.copy(
+                isRunning = false,
+                timeFinished = false,
+                hours = "00",
+                minutes = "00",
+                seconds = "30",
+                totalSeconds = 30
+            )
+        }
     }
 
     fun dismissTimeFinished() {
-        _timeFinished.value = false
-        _hours.value = _saveHours.value
-        _minutes.value = _saveMinutes.value
-        _seconds.value = _saveSeconds.value
         stopAlarmService()
+        _uiState.update {
+            it.copy(
+                timeFinished = false,
+                // Restauramos los valores originales guardados
+                hours = it.savedHours,
+                minutes = it.savedMinutes,
+                seconds = it.savedSeconds
+            )
+        }
     }
 
     private fun startAlarmService() {
-        android.util.Log.d("TimerAlarm", "Programando alarma con AlarmManager")
-
         val alarmManager = application.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(application, AlarmReceiver::class.java).apply {
-            putExtra(TimerForegroundService.EXTRA_TIMER_TYPE, TimerForegroundService.TIMER_TYPE_STANDARD)
+            putExtra(TrainingConstants.EXTRA_TIMER_TYPE, TrainingConstants.TIMER_TYPE_STANDARD)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
             application,
-            1001,
+            TrainingConstants.NOTIFICATION_ID_TIMER,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Alarma inmediata que funciona incluso en Doze
+        // AlarmManager.setExactAndAllowWhileIdle asegura que suene incluso en modo Doze
         alarmManager.setExactAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
-            System.currentTimeMillis() + 100, // +100ms para asegurar que dispara
+            System.currentTimeMillis() + 100,
             pendingIntent
         )
     }
 
     private fun stopAlarmService() {
-        // Cancelar alarma pendiente
         val alarmManager = application.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(application, AlarmReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(
             application,
-            1001,
+            TrainingConstants.NOTIFICATION_ID_TIMER,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pendingIntent)
 
-        // Detener servicio si está corriendo
         val stopIntent = Intent(application, TimerForegroundService::class.java).apply {
-            action = TimerForegroundService.ACTION_STOP
+            action = TrainingConstants.ACTION_STOP
         }
         application.startService(stopIntent)
     }

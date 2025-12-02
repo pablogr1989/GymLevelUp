@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.gymlog.app.domain.model.Exercise
 import com.gymlog.app.domain.model.ExerciseHistory
 import com.gymlog.app.domain.repository.ExerciseRepository
+import com.gymlog.app.util.InputValidator.validateFloat
+import com.gymlog.app.util.InputValidator.validateInt
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -79,7 +81,7 @@ class ExerciseDetailViewModel @Inject constructor(
     fun updateSeries(value: String) {
         if (value.isEmpty()) {
             _series.value = "0"
-        } else if (value.all { it.isDigit() }) {
+        } else if (value.validateInt()) {
             _series.value = value
         }
     }
@@ -87,7 +89,7 @@ class ExerciseDetailViewModel @Inject constructor(
     fun updateReps(value: String) {
         if (value.isEmpty()) {
             _reps.value = "0"
-        } else if (value.all { it.isDigit() }) {
+        } else if (value.validateInt()) {
             _reps.value = value
         }
     }
@@ -95,7 +97,7 @@ class ExerciseDetailViewModel @Inject constructor(
     fun updateWeight(value: String) {
         if (value.isEmpty()) {
             _weight.value = "0"
-        } else if (value.matches(Regex("^\\d*\\.?\\d*$"))) {
+        } else if (value.validateFloat()) {
             _weight.value = value
         }
     }

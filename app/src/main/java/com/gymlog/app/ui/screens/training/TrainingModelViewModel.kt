@@ -10,26 +10,46 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gymlog.app.domain.model.DaySlot
 import com.gymlog.app.domain.model.Exercise
+import com.gymlog.app.domain.model.ExerciseHistory
 import com.gymlog.app.domain.repository.CalendarRepository
 import com.gymlog.app.domain.repository.ExerciseRepository
 import com.gymlog.app.ui.screens.timer.AlarmReceiver
 import com.gymlog.app.ui.screens.timer.TimerForegroundService
+import com.gymlog.app.util.TrainingConstants
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import javax.inject.Inject
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.delay
-import com.gymlog.app.domain.model.ExerciseHistory
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.util.UUID
+import javax.inject.Inject
 
 enum class SeriesAction {
     CONTINUE,
     CONFIRM_FINISH
 }
+
+data class TrainingUiState(
+    val daySlot: DaySlot? = null,
+    val exercises: List<Exercise> = emptyList(),
+    val isTrainingActive: Boolean = false,
+    val currentExerciseIndex: Int = 0,
+    val currentSeries: Int = 1,
+    val currentWeight: Float = 0f,
+    val currentNotes: String = "",
+    val timerSeconds: Int = 0,
+    val isTimerRunning: Boolean = false,
+    val restMinutes: Int = 2,
+    val isSeriesButtonEnabled: Boolean = false,
+    val isSeriesRunning: Boolean = false
+)
 
 @HiltViewModel
 class TrainingModeViewModel @Inject constructor(
@@ -41,46 +61,50 @@ class TrainingModeViewModel @Inject constructor(
 
     private val daySlotId: String = checkNotNull(savedStateHandle["daySlotId"])
 
-    // 1. Datos básicos
-    private val _daySlot = MutableStateFlow<DaySlot?>(null)
-    val daySlot: StateFlow<DaySlot?> = _daySlot.asStateFlow()
+    // Fuente de verdad única
+    private val _uiState = MutableStateFlow(TrainingUiState())
+    val uiState: StateFlow<TrainingUiState> = _uiState.asStateFlow()
 
-    private val _exercises = MutableStateFlow<List<Exercise>>(emptyList())
-    val exercises: StateFlow<List<Exercise>> = _exercises.asStateFlow()
+    // --- Legacy StateFlows (Compatibilidad con UI existente) ---
+    // Estos flujos se actualizan AUTOMÁTICAMENTE cuando cambia _uiState.
+    // Usamos stateIn para convertirlos a StateFlow, que es lo que espera Compose.
 
-    // 2. Estado del entrenamiento
-    private val _isTrainingActive = MutableStateFlow(false)
-    val isTrainingActive: StateFlow<Boolean> = _isTrainingActive.asStateFlow()
+    val daySlot = _uiState.map { it.daySlot }
+        .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
-    private val _currentExerciseIndex = MutableStateFlow(0)
-    val currentExerciseIndex: StateFlow<Int> = _currentExerciseIndex.asStateFlow()
+    val exercises = _uiState.map { it.exercises }
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    // 3. Estado del ejercicio actual
-    private val _currentSeries = MutableStateFlow(1)
-    val currentSeries: StateFlow<Int> = _currentSeries.asStateFlow()
+    val isTrainingActive = _uiState.map { it.isTrainingActive }
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
 
-    private val _currentWeight = MutableStateFlow(0f)
-    val currentWeight: StateFlow<Float> = _currentWeight.asStateFlow()
+    val currentExerciseIndex = _uiState.map { it.currentExerciseIndex }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
-    private val _currentNotes = MutableStateFlow("")
-    val currentNotes: StateFlow<String> = _currentNotes.asStateFlow()
+    val currentSeries = _uiState.map { it.currentSeries }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 1)
 
-    // 4. Timer
-    private val _timerSeconds = MutableStateFlow(0)
-    val timerSeconds: StateFlow<Int> = _timerSeconds.asStateFlow()
+    val currentWeight = _uiState.map { it.currentWeight }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0f)
 
-    private val _isTimerRunning = MutableStateFlow(false)
-    val isTimerRunning: StateFlow<Boolean> = _isTimerRunning.asStateFlow()
+    val currentNotes = _uiState.map { it.currentNotes }
+        .stateIn(viewModelScope, SharingStarted.Lazily, "")
 
-    private val _restMinutes = MutableStateFlow(2)
-    val restMinutes: StateFlow<Int> = _restMinutes.asStateFlow()
+    val timerSeconds = _uiState.map { it.timerSeconds }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
-    // 5. Botones
-    private val _isSeriesButtonEnabled = MutableStateFlow(false)
-    val isSeriesButtonEnabled: StateFlow<Boolean> = _isSeriesButtonEnabled.asStateFlow()
+    val isTimerRunning = _uiState.map { it.isTimerRunning }
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
 
-    private val _isSeriesRunning = MutableStateFlow(false)
-    val isSeriesRunning: StateFlow<Boolean> = _isSeriesRunning.asStateFlow()
+    val restMinutes = _uiState.map { it.restMinutes }
+        .stateIn(viewModelScope, SharingStarted.Lazily, 2)
+
+    val isSeriesButtonEnabled = _uiState.map { it.isSeriesButtonEnabled }
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
+
+    val isSeriesRunning = _uiState.map { it.isSeriesRunning }
+        .stateIn(viewModelScope, SharingStarted.Lazily, false)
+    // -----------------------------------------------------------
 
     init {
         loadDaySlotAndExercises()
@@ -88,95 +112,107 @@ class TrainingModeViewModel @Inject constructor(
 
     private fun loadDaySlotAndExercises() {
         viewModelScope.launch {
-            // Cargar DaySlot
-            _daySlot.value = calendarRepository.getDayById(daySlotId)
-            _daySlot.value?.let { daySlot ->
-                val exerciseIds = daySlot.selectedExerciseIds
+            val daySlotLoaded = calendarRepository.getDayById(daySlotId)
+
+            var exercisesList: List<Exercise> = emptyList()
+            var initialWeight = 0f
+            var initialNotes = ""
+
+            daySlotLoaded?.let { slot ->
+                val exerciseIds = slot.selectedExerciseIds
+                // Nota: Esto asume que selectedExerciseIds es una lista de Strings en el objeto DaySlot del dominio.
+                // Si DaySlot.selectedExerciseIds es String en DB pero List<String> en Domain, esto funciona.
+                // Verificando CalendarRepositoryImpl... sí, hace el parseo.
+
                 val allExercises = exerciseRepository.getAllExercises().first()
                 val exerciseMap = allExercises.associateBy { it.id }
-                _exercises.value = exerciseIds.mapNotNull { id -> exerciseMap[id] }
+                exercisesList = exerciseIds.mapNotNull { id -> exerciseMap[id] }
 
-                // Inicializar datos del primer ejercicio
-                _exercises.value.firstOrNull()?.let { firstExercise ->
-                    _currentWeight.value = firstExercise.currentWeightKg
-                    _currentNotes.value = firstExercise.notes
+                exercisesList.firstOrNull()?.let { first ->
+                    initialWeight = first.currentWeightKg
+                    initialNotes = first.notes
                 }
             }
+
+            _uiState.update { it.copy(
+                daySlot = daySlotLoaded,
+                exercises = exercisesList,
+                currentWeight = initialWeight,
+                currentNotes = initialNotes
+            )}
         }
     }
 
     fun startTraining() {
-        _isTrainingActive.value = true
-        _currentExerciseIndex.value = 0
-        _currentSeries.value = 1
-        _isSeriesButtonEnabled.value = true
+        _uiState.update { it.copy(
+            isTrainingActive = true,
+            currentExerciseIndex = 0,
+            currentSeries = 1,
+            isSeriesButtonEnabled = true
+        )}
 
-        // Cargar datos del primer ejercicio
-        _exercises.value.firstOrNull()?.let { exercise ->
-            _currentWeight.value = exercise.currentWeightKg
-            _currentNotes.value = exercise.notes
+        _uiState.value.exercises.firstOrNull()?.let { exercise ->
+            _uiState.update { it.copy(
+                currentWeight = exercise.currentWeightKg,
+                currentNotes = exercise.notes
+            )}
         }
     }
 
     fun endTraining() {
         viewModelScope.launch {
-            // Guardar cambios finales si hubo modificación de peso
             saveCurrentExerciseChanges()
-
-            // Marcar DaySlot como completado
             calendarRepository.updateDayCompleted(daySlotId, true)
-
-            // Reset estado
-            _isTrainingActive.value = false
-            _currentExerciseIndex.value = 0
-            _currentSeries.value = 1
-            _isSeriesRunning.value = false
-            _isSeriesButtonEnabled.value = false
             stopTimer()
+
+            _uiState.update { it.copy(
+                isTrainingActive = false,
+                currentExerciseIndex = 0,
+                currentSeries = 1,
+                isSeriesRunning = false,
+                isSeriesButtonEnabled = false
+            )}
         }
     }
 
     fun updateWeight(weight: Float) {
-        _currentWeight.value = weight
+        _uiState.update { it.copy(currentWeight = weight) }
     }
 
     fun updateNotes(notes: String) {
-        _currentNotes.value = notes
+        _uiState.update { it.copy(currentNotes = notes) }
     }
 
     fun updateRestMinutes(minutes: Int) {
-        _restMinutes.value = minutes.coerceIn(1, 99)
+        val coerced = minutes.coerceIn(1, 99)
+        _uiState.update { it.copy(restMinutes = coerced) }
     }
 
     // ============ FUNCIONES DE SERIES ============
 
     fun startSeries() {
-        _isSeriesRunning.value = true
-        _isSeriesButtonEnabled.value = true
-
-        // Resetear timer al valor del number input
-        _timerSeconds.value = _restMinutes.value * 60
-
-        // Deshabilitar botones de timer
-        _isTimerRunning.value = false
+        _uiState.update { it.copy(
+            isSeriesRunning = true,
+            isSeriesButtonEnabled = true,
+            timerSeconds = it.restMinutes * 60,
+            isTimerRunning = false
+        )}
     }
 
     fun stopSeries(): SeriesAction {
-        val currentExercise = _exercises.value.getOrNull(_currentExerciseIndex.value)
-        val maxSeries = (currentExercise?.currentSeries ?: 0) + 1 // +1 por calentamiento
+        val state = _uiState.value
+        val currentExercise = state.exercises.getOrNull(state.currentExerciseIndex)
+        val maxSeries = (currentExercise?.currentSeries ?: 0) + 1
 
-        return if (_currentSeries.value + 1 <= maxSeries) {
-            // No es la última serie
-            _currentSeries.value += 1
-            _isSeriesButtonEnabled.value = false
-            _isSeriesRunning.value = false
-
-            // Iniciar timer countdown
+        return if (state.currentSeries + 1 <= maxSeries) {
+            _uiState.update { it.copy(
+                currentSeries = it.currentSeries + 1,
+                isSeriesButtonEnabled = false,
+                isSeriesRunning = false
+            )}
             startTimer()
-
             SeriesAction.CONTINUE
         } else {
-            // Es la última serie
             SeriesAction.CONFIRM_FINISH
         }
     }
@@ -196,23 +232,22 @@ class TrainingModeViewModel @Inject constructor(
     }
 
     private suspend fun moveToNextExercise() {
-        val nextIndex = _currentExerciseIndex.value + 1
+        val nextIndex = _uiState.value.currentExerciseIndex + 1
 
-        if (nextIndex < _exercises.value.size) {
-            // Hay más ejercicios
-            _currentExerciseIndex.value = nextIndex
-            _currentSeries.value = 1
-            _isSeriesRunning.value = false
-            _isSeriesButtonEnabled.value = false
+        if (nextIndex < _uiState.value.exercises.size) {
             stopTimer()
 
-            // Cargar datos del siguiente ejercicio
-            _exercises.value.getOrNull(nextIndex)?.let { exercise ->
-                _currentWeight.value = exercise.currentWeightKg
-                _currentNotes.value = exercise.notes
-            }
+            val nextExercise = _uiState.value.exercises.getOrNull(nextIndex)
+
+            _uiState.update { it.copy(
+                currentExerciseIndex = nextIndex,
+                currentSeries = 1,
+                isSeriesRunning = false,
+                isSeriesButtonEnabled = false,
+                currentWeight = nextExercise?.currentWeightKg ?: 0f,
+                currentNotes = nextExercise?.notes ?: ""
+            )}
         } else {
-            // Era el último ejercicio, terminar entrenamiento
             endTraining()
         }
     }
@@ -222,57 +257,56 @@ class TrainingModeViewModel @Inject constructor(
     private var timerJob: Job? = null
 
     private fun startTimer() {
-        _isTimerRunning.value = true
+        _uiState.update { it.copy(isTimerRunning = true) }
 
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
-            while (_timerSeconds.value > 0 && _isTimerRunning.value) {
+            while (_uiState.value.timerSeconds > 0 && _uiState.value.isTimerRunning) {
                 delay(1000L)
-                _timerSeconds.value -= 1
+                _uiState.update { it.copy(timerSeconds = it.timerSeconds - 1) }
             }
 
-            // Timer llegó a 0
-            if (_timerSeconds.value == 0) {
+            if (_uiState.value.timerSeconds == 0) {
                 onTimerFinished()
             }
         }
     }
 
     fun pauseTimer() {
-        _isTimerRunning.value = false
+        _uiState.update { it.copy(isTimerRunning = false) }
         timerJob?.cancel()
     }
 
     fun resumeTimer() {
-        if (_timerSeconds.value > 0) {
+        if (_uiState.value.timerSeconds > 0) {
             startTimer()
         }
     }
 
     fun restartTimer() {
-        _timerSeconds.value = _restMinutes.value * 60
+        _uiState.update { it.copy(timerSeconds = it.restMinutes * 60) }
         startTimer()
     }
 
     fun stopTimer() {
-        _isTimerRunning.value = false
-        _timerSeconds.value = 0
         timerJob?.cancel()
         stopAlarmService()
 
         // Habilitar botón de serie si estaba deshabilitado
-        if (!_isSeriesButtonEnabled.value) {
-            _isSeriesButtonEnabled.value = true
-        }
+        val shouldEnable = !_uiState.value.isSeriesButtonEnabled
+
+        _uiState.update { it.copy(
+            isTimerRunning = false,
+            timerSeconds = 0,
+            isSeriesButtonEnabled = if (shouldEnable) true else it.isSeriesButtonEnabled
+        )}
     }
 
     private fun onTimerFinished() {
-        _isTimerRunning.value = false
-
-        // Habilitar botón de serie
-        _isSeriesButtonEnabled.value = true
-
-        // Iniciar alarma
+        _uiState.update { it.copy(
+            isTimerRunning = false,
+            isSeriesButtonEnabled = true
+        )}
         startAlarmService()
     }
 
@@ -281,39 +315,36 @@ class TrainingModeViewModel @Inject constructor(
 
         val alarmManager = application.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(application, AlarmReceiver::class.java).apply {
-            putExtra(TimerForegroundService.EXTRA_TIMER_TYPE, TimerForegroundService.TIMER_TYPE_TRAINING)
+            putExtra(TrainingConstants.EXTRA_TIMER_TYPE, TrainingConstants.TIMER_TYPE_TRAINING)
         }
 
         val pendingIntent = PendingIntent.getBroadcast(
             application,
-            1002, // ID diferente para training
+            TrainingConstants.NOTIFICATION_ID_TRAINING,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Alarma inmediata que funciona incluso en Doze
         alarmManager.setExactAndAllowWhileIdle(
             AlarmManager.RTC_WAKEUP,
-            System.currentTimeMillis() + 100, // +100ms para asegurar que dispara
+            System.currentTimeMillis() + 100,
             pendingIntent
         )
     }
 
     private fun stopAlarmService() {
-        // Cancelar alarma pendiente
         val alarmManager = application.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(application, AlarmReceiver::class.java)
         val pendingIntent = PendingIntent.getBroadcast(
             application,
-            1002,
+            TrainingConstants.NOTIFICATION_ID_TRAINING,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pendingIntent)
 
-        // Detener servicio si está corriendo
         val stopIntent = Intent(application, TimerForegroundService::class.java).apply {
-            action = TimerForegroundService.ACTION_STOP
+            action = TrainingConstants.ACTION_STOP
         }
         application.startService(stopIntent)
     }
@@ -321,36 +352,34 @@ class TrainingModeViewModel @Inject constructor(
     // ============ GUARDAR CAMBIOS ============
 
     private suspend fun saveCurrentExerciseChanges() {
-        val currentExercise = _exercises.value.getOrNull(_currentExerciseIndex.value) ?: return
+        val state = _uiState.value
+        val currentExercise = state.exercises.getOrNull(state.currentExerciseIndex) ?: return
 
-        val weightChanged = _currentWeight.value != currentExercise.currentWeightKg
-        val notesChanged = _currentNotes.value != currentExercise.notes
+        val weightChanged = state.currentWeight != currentExercise.currentWeightKg
+        val notesChanged = state.currentNotes != currentExercise.notes
 
-        // Actualizar notas si cambiaron
         if (notesChanged) {
             exerciseRepository.updateExerciseNotes(
                 exerciseId = currentExercise.id,
-                notes = _currentNotes.value
+                notes = state.currentNotes
             )
         }
 
-        // Actualizar peso y crear historial si cambió
         if (weightChanged) {
             exerciseRepository.updateExerciseStats(
                 exerciseId = currentExercise.id,
                 series = currentExercise.currentSeries,
                 reps = currentExercise.currentReps,
-                weight = _currentWeight.value
+                weight = state.currentWeight
             )
 
-            // Crear registro en historial
             val history = ExerciseHistory(
                 id = UUID.randomUUID().toString(),
                 exerciseId = currentExercise.id,
                 timestamp = System.currentTimeMillis(),
                 series = currentExercise.currentSeries,
                 reps = currentExercise.currentReps,
-                weightKg = _currentWeight.value
+                weightKg = state.currentWeight
             )
             exerciseRepository.insertHistory(history)
         }

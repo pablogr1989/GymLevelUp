@@ -34,10 +34,7 @@ class EditExerciseViewModel @Inject constructor(
     private val _imageUri = MutableStateFlow<Uri?>(null)
     val imageUri = _imageUri.asStateFlow()
 
-    // Path persistente de la imagen actual
     private val _currentImagePath = MutableStateFlow<String?>(null)
-
-    // URI temporal seleccionada (no persistente)
     private var pendingImageUri: Uri? = null
 
     private val _showMuscleGroupError = MutableStateFlow(false)
@@ -64,7 +61,6 @@ class EditExerciseViewModel @Inject constructor(
                 _selectedMuscleGroup.value = exercise.muscleGroup
                 _currentImagePath.value = exercise.imageUri
 
-                // Convertir path a URI para mostrar en UI
                 if (exercise.imageUri != null) {
                     _imageUri.value = imageStorageHelper.pathToUri(exercise.imageUri)
                 }
@@ -88,7 +84,7 @@ class EditExerciseViewModel @Inject constructor(
 
     fun updateImageUri(uri: Uri?) {
         pendingImageUri = uri
-        _imageUri.value = uri // Mostrar preview inmediato
+        _imageUri.value = uri
     }
 
     fun saveExercise() {
@@ -105,15 +101,10 @@ class EditExerciseViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
 
-            // Si hay una imagen nueva pendiente, copiarla a almacenamiento interno
             val finalImagePath = if (pendingImageUri != null) {
-                // Eliminar imagen anterior si existe
                 imageStorageHelper.deleteImage(_currentImagePath.value)
-
-                // Guardar nueva imagen
                 imageStorageHelper.saveImageToInternalStorage(pendingImageUri!!)
             } else {
-                // Mantener imagen actual
                 _currentImagePath.value
             }
 
@@ -122,7 +113,7 @@ class EditExerciseViewModel @Inject constructor(
                 name = _name.value.trim(),
                 description = _description.value.trim(),
                 muscleGroup = _selectedMuscleGroup.value!!,
-                imageUri = finalImagePath // Guardar path absoluto, no URI
+                imageUri = finalImagePath
             )
 
             _isLoading.value = false

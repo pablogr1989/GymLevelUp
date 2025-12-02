@@ -4,16 +4,9 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.os.PowerManager
+import com.gymlog.app.util.TrainingConstants
 
 class TimerForegroundService : Service() {
-
-    companion object {
-        const val ACTION_START = "ACTION_START_TIMER_ALARM"
-        const val ACTION_STOP = "ACTION_STOP_TIMER_ALARM"
-        const val EXTRA_TIMER_TYPE = "EXTRA_TIMER_TYPE"
-        const val TIMER_TYPE_STANDARD = "cronómetro"
-        const val TIMER_TYPE_TRAINING = "temporizador de entrenamiento"
-    }
 
     private var soundManager: TimerSoundManager? = null
     private var wakeLock: PowerManager.WakeLock? = null
@@ -36,19 +29,20 @@ class TimerForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START -> {
-                val timerType = intent.getStringExtra(EXTRA_TIMER_TYPE) ?: TIMER_TYPE_STANDARD
+            TrainingConstants.ACTION_START -> {
+                val timerType = intent.getStringExtra(TrainingConstants.EXTRA_TIMER_TYPE)
+                    ?: TrainingConstants.TIMER_TYPE_STANDARD
 
                 // CRÍTICO: Llamar a startForeground INMEDIATAMENTE
                 val notification = TimerNotificationHelper.buildTimerFinishedNotification(this, timerType)
-                startForeground(TimerNotificationHelper.NOTIFICATION_ID, notification)
+                startForeground(TrainingConstants.NOTIFICATION_ID_TIMER, notification)
 
                 // DESPUÉS iniciar sonido y vibración
                 soundManager = TimerSoundManager(this).apply {
                     startAlarm()
                 }
             }
-            ACTION_STOP -> {
+            TrainingConstants.ACTION_STOP -> {
                 stopForegroundService()
             }
         }

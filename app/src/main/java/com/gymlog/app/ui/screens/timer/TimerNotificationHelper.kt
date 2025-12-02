@@ -7,18 +7,18 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import com.gymlog.app.R
+import com.gymlog.app.util.TrainingConstants
 
 object TimerNotificationHelper {
-
-    private const val CHANNEL_ID = "timer_channel"
-    private const val CHANNEL_NAME = "Timer Notifications"
-    const val NOTIFICATION_ID = 1001
 
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val importance = NotificationManager.IMPORTANCE_HIGH
-            val channel = NotificationChannel(CHANNEL_ID, CHANNEL_NAME, importance).apply {
+            val channel = NotificationChannel(
+                TrainingConstants.NOTIFICATION_CHANNEL_ID,
+                TrainingConstants.NOTIFICATION_CHANNEL_NAME,
+                importance
+            ).apply {
                 description = "Notificaciones del cronómetro"
                 enableVibration(true)
                 setShowBadge(true)
@@ -31,7 +31,7 @@ object TimerNotificationHelper {
 
     fun buildTimerFinishedNotification(context: Context, timerType: String): android.app.Notification {
         val stopIntent = Intent(context, TimerForegroundService::class.java).apply {
-            action = TimerForegroundService.ACTION_STOP
+            action = TrainingConstants.ACTION_STOP
         }
         val stopPendingIntent = PendingIntent.getService(
             context,
@@ -51,7 +51,7 @@ object TimerNotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        return NotificationCompat.Builder(context, CHANNEL_ID)
+        return NotificationCompat.Builder(context, TrainingConstants.NOTIFICATION_CHANNEL_ID)
             .setContentTitle("¡Tiempo terminado!")
             .setContentText("El $timerType ha llegado a 0")
             .setSmallIcon(android.R.drawable.ic_dialog_info)

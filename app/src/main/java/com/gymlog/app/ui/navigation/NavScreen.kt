@@ -85,4 +85,6 @@ sealed class Screen(
 
     object Backup : Screen(route = "backup")
 
+    // Future screens for Phase 2 (Sets)
+    // object EditSet : Screen(...)
 }
