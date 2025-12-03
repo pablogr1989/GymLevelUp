@@ -1,8 +1,10 @@
 package com.gymlog.app.ui.screens.backup
 
+import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gymlog.app.R
 import com.gymlog.app.util.BackupManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +22,8 @@ sealed class BackupState {
 
 @HiltViewModel
 class BackupViewModel @Inject constructor(
-    private val backupManager: BackupManager
+    private val backupManager: BackupManager,
+    private val application: Application
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<BackupState>(BackupState.Idle)
@@ -34,9 +37,13 @@ class BackupViewModel @Inject constructor(
             _state.value = BackupState.Loading
             try {
                 backupManager.exportDataToJson(destinationUri)
-                _state.value = BackupState.Success("Datos exportados con éxito a la ubicación seleccionada.")
+                _state.value = BackupState.Success(
+                    application.getString(R.string.backup_msg_export_success)
+                )
             } catch (e: Exception) {
-                _state.value = BackupState.Error("Error al exportar: ${e.localizedMessage ?: "Desconocido"}")
+                _state.value = BackupState.Error(
+                    application.getString(R.string.backup_msg_export_error, e.localizedMessage ?: "Desconocido")
+                )
             }
         }
     }
@@ -50,9 +57,13 @@ class BackupViewModel @Inject constructor(
             try {
                 // Llama al manager para importar desde el URI
                 backupManager.importDataFromJson(uri)
-                _state.value = BackupState.Success("Datos importados con éxito y base de datos restaurada.")
+                _state.value = BackupState.Success(
+                    application.getString(R.string.backup_msg_import_success)
+                )
             } catch (e: Exception) {
-                _state.value = BackupState.Error("Error al importar. Asegúrate de que el archivo es un JSON válido. Mensaje: ${e.localizedMessage ?: "Desconocido"}")
+                _state.value = BackupState.Error(
+                    application.getString(R.string.backup_msg_import_error, e.localizedMessage ?: "Desconocido")
+                )
             }
         }
     }

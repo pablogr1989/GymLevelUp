@@ -13,11 +13,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gymlog.app.R
 import com.gymlog.app.ui.theme.*
 import com.gymlog.app.util.RequestNotificationPermission
 
@@ -36,12 +38,12 @@ fun TimerScreen(
     val timeFinished by viewModel.timeFinished.collectAsState()
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = HunterBlack,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        "CRONÓMETRO",
+                        stringResource(R.string.timer_title),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Black,
                             letterSpacing = 2.sp
@@ -49,8 +51,8 @@ fun TimerScreen(
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = Color.White
+                    containerColor = HunterBlack,
+                    titleContentColor = HunterTextPrimary
                 )
             )
         }
@@ -101,8 +103,7 @@ fun TimerScreen(
                         ":",
                         fontSize = 48.sp,
                         fontWeight = FontWeight.Thin,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        // CORREGIDO: Padding separado
+                        color = HunterTextSecondary.copy(alpha = 0.5f),
                         modifier = Modifier
                             .padding(horizontal = 8.dp)
                             .padding(bottom = 32.dp)
@@ -118,8 +119,7 @@ fun TimerScreen(
                         ":",
                         fontSize = 48.sp,
                         fontWeight = FontWeight.Thin,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        // CORREGIDO: Padding separado
+                        color = HunterTextSecondary.copy(alpha = 0.5f),
                         modifier = Modifier
                             .padding(horizontal = 8.dp)
                             .padding(bottom = 32.dp)
@@ -162,7 +162,7 @@ fun TimerScreen(
                             Icons.Default.Pause,
                             contentDescription = "Pausar",
                             modifier = Modifier.size(48.dp),
-                            tint = Color.White
+                            tint = HunterTextPrimary
                         )
                     }
                 }
@@ -171,30 +171,30 @@ fun TimerScreen(
                     onClick = viewModel::resetTimer,
                     modifier = Modifier.size(60.dp),
                     shape = CircleShape,
-                    colors = ButtonDefaults.filledTonalButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    colors = ButtonDefaults.filledTonalButtonColors(containerColor = HunterSurface)
                 ) {
                     Icon(
                         Icons.Default.Refresh,
                         contentDescription = "Reiniciar",
                         modifier = Modifier.size(24.dp),
-                        tint = Color.White
+                        tint = HunterTextPrimary
                     )
                 }
             }
 
             Text(
-                text = if (isRunning) "SISTEMA ACTIVO" else "SISTEMA EN ESPERA",
+                text = if (isRunning) stringResource(R.string.timer_system_active) else stringResource(R.string.timer_system_waiting),
                 style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 2.sp),
-                color = if (isRunning) HunterPurple else MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (isRunning) HunterPurple else HunterTextSecondary
             )
         }
     }
 
     if (timeFinished) {
         HunterConfirmDialog(
-            title = "TIEMPO AGOTADO",
-            text = "El contador ha llegado a cero.",
-            confirmText = "ACEPTAR",
+            title = stringResource(R.string.timer_dialog_finished_title),
+            text = stringResource(R.string.timer_dialog_finished_text),
+            confirmText = stringResource(R.string.common_accept),
             onConfirm = viewModel::dismissTimeFinished,
             onDismiss = {}
         )
@@ -245,7 +245,7 @@ private fun HunterNumberPicker(
                 text = String.format("%02d", value),
                 fontSize = 64.sp,
                 fontWeight = FontWeight.Black,
-                color = if (enabled) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f),
+                color = if (enabled) HunterTextPrimary else ScreenColors.Timer.PickerTextDisabled,
                 textAlign = TextAlign.Center,
                 letterSpacing = (-2).sp
             )
@@ -254,7 +254,7 @@ private fun HunterNumberPicker(
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
+            color = ScreenColors.Timer.PickerLabel,
             fontWeight = FontWeight.Bold
         )
     }

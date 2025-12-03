@@ -18,21 +18,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gymlog.app.R
 import com.gymlog.app.data.local.entity.DayCategory
 import com.gymlog.app.domain.model.DaySlot
 import com.gymlog.app.domain.model.MonthWithWeeks
 import com.gymlog.app.domain.model.WeekWithDays
-import com.gymlog.app.ui.theme.HunterConfirmDialog
-import com.gymlog.app.ui.theme.RankB
-import com.gymlog.app.ui.theme.RankD
+import com.gymlog.app.ui.theme.*
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -50,30 +49,38 @@ fun CalendarDetailScreen(
     val swapSourceDayId by viewModel.swapSourceDayId.collectAsState()
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = HunterBlack,
         topBar = {
             TopAppBar(
-                title = { Text(calendarWithMonths?.calendar?.name?.uppercase() ?: "CALENDARIO", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black)) },
+                title = {
+                    Text(
+                        calendarWithMonths?.calendar?.name?.uppercase() ?: stringResource(R.string.calendar_detail_default_title),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black)
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = Color.White)
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = HunterTextPrimary)
                     }
                 },
                 actions = {
                     if (!isSelectionMode && swapSourceDayId == null) {
                         IconButton(onClick = viewModel::showClearAllDialog) {
-                            Icon(Icons.Default.CleaningServices, contentDescription = "Limpiar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(Icons.Default.CleaningServices, contentDescription = stringResource(R.string.calendar_detail_cd_clean), tint = HunterTextSecondary)
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = HunterBlack,
+                    titleContentColor = HunterTextPrimary
+                )
             )
         },
         bottomBar = {
             if (swapSourceDayId != null) {
                 // Barra de intercambio Hunter Style
                 Surface(
-                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                    color = HunterSurface,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -82,12 +89,12 @@ fun CalendarDetailScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "SELECCIONA DESTINO...",
+                            text = stringResource(R.string.calendar_detail_swap_prompt),
                             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                            color = ScreenColors.CalendarDetail.DaySwapSourceBorder // Usando color de swap como acento
                         )
                         TextButton(onClick = viewModel::cancelSwap) {
-                            Text("CANCELAR", fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.common_cancel), fontWeight = FontWeight.Bold, color = HunterTextPrimary)
                         }
                     }
                 }
@@ -143,9 +150,9 @@ fun CalendarDetailScreen(
 
     if (showClearAllDialog) {
         HunterConfirmDialog(
-            title = "RESETEAR PROGRESO",
-            text = "¿Limpiar todos los completados de este calendario?",
-            confirmText = "LIMPIAR",
+            title = stringResource(R.string.calendar_detail_dialog_reset_title),
+            text = stringResource(R.string.calendar_detail_dialog_reset_text),
+            confirmText = stringResource(R.string.calendar_detail_cd_clean).uppercase(),
             onConfirm = viewModel::clearAllCompleted,
             onDismiss = viewModel::dismissClearAllDialog
         )
@@ -154,18 +161,28 @@ fun CalendarDetailScreen(
 
 @Composable
 private fun DaysOfWeekHeader() {
+    val days = listOf(
+        stringResource(R.string.day_mon_short),
+        stringResource(R.string.day_tue_short),
+        stringResource(R.string.day_wed_short),
+        stringResource(R.string.day_thu_short),
+        stringResource(R.string.day_fri_short),
+        stringResource(R.string.day_sat_short),
+        stringResource(R.string.day_sun_short)
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
+            .background(HunterSurface)
             .padding(vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        listOf("L", "M", "X", "J", "V", "S", "D").forEach { day ->
+        days.forEach { day ->
             Text(
                 text = day,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary,
+                color = HunterPrimary,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center
             )
@@ -189,17 +206,17 @@ private fun MonthNavigation(
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onPreviousMonth, enabled = canGoPrevious) {
-            Icon(Icons.Default.ChevronLeft, null, tint = if (canGoPrevious) Color.White else Color.Gray)
+            Icon(Icons.Default.ChevronLeft, null, tint = if (canGoPrevious) HunterTextPrimary else HunterTextSecondary.copy(alpha = 0.5f))
         }
 
         Text(
             text = currentMonth?.month?.name?.uppercase() ?: "",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black, letterSpacing = 2.sp),
-            color = MaterialTheme.colorScheme.primary
+            color = HunterPrimary
         )
 
         IconButton(onClick = onNextMonth, enabled = canGoNext) {
-            Icon(Icons.Default.ChevronRight, null, tint = if (canGoNext) Color.White else Color.Gray)
+            Icon(Icons.Default.ChevronRight, null, tint = if (canGoNext) HunterTextPrimary else HunterTextSecondary.copy(alpha = 0.5f))
         }
     }
 }
@@ -242,17 +259,17 @@ private fun DayBox(
 ) {
     val category = daySlot.categories.firstOrNull()
 
-    // Colores y Bordes dinámicos
+    // Colores y Bordes dinámicos usando ScreenColors
     val borderColor = when {
-        isSwapSource -> MaterialTheme.colorScheme.tertiary // Origen del movimiento (Ámbar/Rojo)
-        isSelected -> MaterialTheme.colorScheme.primary // Seleccionado (Azul)
-        daySlot.completed -> RankB // Completado (Verde - RankD importado de Color.kt)
-        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.1f) // Normal (Gris suave)
+        isSwapSource -> ScreenColors.CalendarDetail.DaySwapSourceBorder // Ámbar/Destacado
+        isSelected -> ScreenColors.CalendarDetail.DaySelectedBorder // Azul
+        daySlot.completed -> ScreenColors.CalendarDetail.DayCompletedIcon // Verde/RankB
+        else -> HunterPrimary.copy(alpha = 0.1f) // Normal
     }
 
     val backgroundColor = when {
-        daySlot.completed -> RankB.copy(alpha = 0.1f) // Fondo sutil verde si completado
-        else -> MaterialTheme.colorScheme.surface
+        daySlot.completed -> ScreenColors.CalendarDetail.DayCompletedBg // Fondo sutil verde
+        else -> HunterSurface
     }
 
     val glowModifier = if (isSwapSource || isSelected) {
@@ -279,19 +296,16 @@ private fun DayBox(
                 painter = painterResource(id = getCategoryIcon(category)),
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = if (daySlot.completed) RankB else MaterialTheme.colorScheme.onSurfaceVariant
+                tint = if (daySlot.completed) ScreenColors.CalendarDetail.DayCompletedIcon else HunterTextSecondary
             )
         } else {
             // Día vacío (Punto discreto)
             Box(
                 modifier = Modifier
                     .size(4.dp)
-                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f), CircleShape)
+                    .background(ScreenColors.CalendarDetail.DayEmptyDot, CircleShape)
             )
         }
-
-        // Indicador de día de la semana (opcional, número)
-        // Text(text = daySlot.dayOfWeek.dayNumber.toString()...)
     }
 }
 
@@ -302,7 +316,7 @@ private fun MultiSelectControls(
     onCancel: () -> Unit
 ) {
     Surface(
-        color = MaterialTheme.colorScheme.surface,
+        color = ScreenColors.CalendarDetail.MultiSelectBarBg,
         tonalElevation = 8.dp
     ) {
         Row(
@@ -311,9 +325,15 @@ private fun MultiSelectControls(
                 .padding(8.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            TextButton(onClick = onMarkAll) { Text("MARCAR", color = RankD, fontWeight = FontWeight.Bold) }
-            TextButton(onClick = onUnmarkAll) { Text("DESMARCAR", color = MaterialTheme.colorScheme.error) }
-            TextButton(onClick = onCancel) { Text("LISTO", color = Color.White) }
+            TextButton(onClick = onMarkAll) {
+                Text(stringResource(R.string.calendar_detail_btn_mark), color = HunterPrimary, fontWeight = FontWeight.Bold)
+            }
+            TextButton(onClick = onUnmarkAll) {
+                Text(stringResource(R.string.calendar_detail_btn_unmark), color = HunterSecondary)
+            }
+            TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.calendar_detail_btn_ready), color = HunterTextPrimary)
+            }
         }
     }
 }
@@ -321,16 +341,16 @@ private fun MultiSelectControls(
 @DrawableRes
 private fun getCategoryIcon(category: DayCategory?): Int {
     return when (category) {
-        DayCategory.BACK -> com.gymlog.app.R.drawable.ic_espalda
-        DayCategory.BICEPS -> com.gymlog.app.R.drawable.ic_biceps
-        DayCategory.LEGS -> com.gymlog.app.R.drawable.ic_pierna
-        DayCategory.GLUTES -> com.gymlog.app.R.drawable.ic_gluteos
-        DayCategory.CHEST -> com.gymlog.app.R.drawable.ic_torso
-        DayCategory.TRICEPS -> com.gymlog.app.R.drawable.ic_triceps
-        DayCategory.SHOULDERS -> com.gymlog.app.R.drawable.ic_hombros
-        DayCategory.CARDIO -> com.gymlog.app.R.drawable.ic_cardio
-        DayCategory.REST -> com.gymlog.app.R.drawable.ic_rest
-        DayCategory.FULL_BODY -> com.gymlog.app.R.drawable.ic_fullbody
-        else -> com.gymlog.app.R.drawable.ic_exercise_placeholder
+        DayCategory.BACK -> R.drawable.ic_espalda
+        DayCategory.BICEPS -> R.drawable.ic_biceps
+        DayCategory.LEGS -> R.drawable.ic_pierna
+        DayCategory.GLUTES -> R.drawable.ic_gluteos
+        DayCategory.CHEST -> R.drawable.ic_torso
+        DayCategory.TRICEPS -> R.drawable.ic_triceps
+        DayCategory.SHOULDERS -> R.drawable.ic_hombros
+        DayCategory.CARDIO -> R.drawable.ic_cardio
+        DayCategory.REST -> R.drawable.ic_rest
+        DayCategory.FULL_BODY -> R.drawable.ic_fullbody
+        else -> R.drawable.ic_exercise_placeholder
     }
 }

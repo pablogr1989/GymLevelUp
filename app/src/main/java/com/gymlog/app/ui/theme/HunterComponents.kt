@@ -11,9 +11,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gymlog.app.R
 
 @Composable
 fun HunterInput(
@@ -42,8 +44,8 @@ fun HunterInput(
             focusedLabelColor = MaterialTheme.colorScheme.primary,
             unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
             cursorColor = MaterialTheme.colorScheme.primary,
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color.White
+            focusedTextColor = HunterTextPrimary,
+            unfocusedTextColor = HunterTextPrimary
         ),
         shape = RoundedCornerShape(12.dp),
         trailingIcon = trailingIcon
@@ -65,7 +67,7 @@ fun HunterConfirmDialog(
             Text(
                 title.uppercase(),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
-                color = Color.White
+                color = HunterTextPrimary
             )
         },
         text = { Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant) },
@@ -75,12 +77,13 @@ fun HunterConfirmDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text(confirmText, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(confirmText, color = HunterTextPrimary, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("CANCELAR", color = MaterialTheme.colorScheme.onSurface)
+                // Usamos el recurso común "CANCELAR"
+                Text(stringResource(R.string.common_cancel), color = MaterialTheme.colorScheme.onSurface)
             }
         }
     )

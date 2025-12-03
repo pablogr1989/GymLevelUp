@@ -20,19 +20,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
-import com.gymlog.app.data.local.entity.DayCategory
+import com.gymlog.app.R
 import com.gymlog.app.data.local.entity.MuscleGroup
 import com.gymlog.app.domain.model.Exercise
 import com.gymlog.app.ui.theme.*
+import com.gymlog.app.ui.util.UiMappers
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,7 +48,7 @@ fun MainScreen(
 
     // Mantenemos expandidos por defecto para ver el contenido
     var expandedGroups by remember {
-        mutableStateOf(MuscleGroup.values().toSet())
+        mutableStateOf(MuscleGroup.entries.toSet())
     }
 
     val visibleGroups = remember(exercises) {
@@ -57,13 +56,13 @@ fun MainScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background, // Fondo Negro Hunter
+        containerColor = HunterBlack, // Color centralizado
         topBar = {
             // Header personalizado estilo "Player Profile"
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)
+                    .background(HunterBlack)
                     .padding(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 8.dp)
             ) {
                 Row(
@@ -73,14 +72,14 @@ fun MainScreen(
                 ) {
                     Column {
                         Text(
-                            text = "BIENVENIDO, JUGADOR",
+                            text = stringResource(R.string.main_welcome_title),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
+                            color = HunterPrimary
                         )
                         Text(
-                            text = "Ejercicios",
+                            text = stringResource(R.string.main_exercises_header),
                             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White
+                            color = HunterTextPrimary
                         )
                     }
 
@@ -90,18 +89,26 @@ fun MainScreen(
                             onClick = onNavigateToBackup,
                             modifier = Modifier
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.surface)
+                                .background(HunterSurface)
                         ) {
-                            Icon(Icons.Default.Save, contentDescription = "Backup", tint = MaterialTheme.colorScheme.onSurface)
+                            Icon(
+                                imageVector = Icons.Default.Save,
+                                contentDescription = stringResource(R.string.main_cd_backup),
+                                tint = HunterTextPrimary
+                            )
                         }
 
                         IconButton(
                             onClick = onNavigateToCreate,
                             modifier = Modifier
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
+                                .background(HunterPrimary)
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = "Nuevo", tint = Color.Black)
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = stringResource(R.string.main_cd_new),
+                                tint = HunterBlack
+                            )
                         }
                     }
                 }
@@ -132,9 +139,9 @@ fun MainScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    "No se encontraron ejercicios...",
+                    text = stringResource(R.string.main_no_exercises_found),
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = HunterTextSecondary
                 )
             }
         } else {
@@ -185,30 +192,42 @@ fun MainScreen(
     showDeleteDialog?.let { exercise ->
         AlertDialog(
             onDismissRequest = viewModel::dismissDeleteDialog,
-            containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("¿Eliminar ejercicio?", color = Color.White) },
+            containerColor = HunterSurface,
+            title = {
+                Text(
+                    text = stringResource(R.string.main_delete_dialog_title),
+                    color = HunterTextPrimary
+                )
+            },
             text = {
                 Text(
-                    "Se eliminará '${exercise.name}' y todo su registro.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = stringResource(R.string.main_delete_dialog_text, exercise.name),
+                    color = HunterTextSecondary
                 )
             },
             confirmButton = {
                 Button(
                     onClick = { viewModel.deleteExercise(exercise) },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.buttonColors(containerColor = HunterSecondary)
                 ) {
-                    Text("Eliminar")
+                    Text(stringResource(R.string.common_delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = viewModel::dismissDeleteDialog) {
-                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        text = stringResource(R.string.common_cancel),
+                        color = HunterTextPrimary
+                    )
                 }
             }
         )
     }
 }
+
+// -----------------------------------------------------------------------------
+// COMPONENTES AUXILIARES (Esto es lo que te faltaba o estaba roto)
+// -----------------------------------------------------------------------------
 
 @Composable
 private fun SearchBar(
@@ -218,14 +237,27 @@ private fun SearchBar(
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
-        placeholder = { Text("Buscar ejercicio...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+        placeholder = {
+            Text(
+                text = stringResource(R.string.main_search_placeholder),
+                color = HunterTextSecondary.copy(alpha = 0.5f)
+            )
+        },
         leadingIcon = {
-            Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = HunterPrimary
+            )
         },
         trailingIcon = {
             if (query.isNotEmpty()) {
                 IconButton(onClick = { onQueryChange("") }) {
-                    Icon(Icons.Default.Clear, contentDescription = "Limpiar", tint = MaterialTheme.colorScheme.onSurface)
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = stringResource(R.string.main_search_clear),
+                        tint = HunterTextPrimary
+                    )
                 }
             }
         },
@@ -235,13 +267,13 @@ private fun SearchBar(
         shape = RoundedCornerShape(12.dp),
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-            cursorColor = MaterialTheme.colorScheme.primary,
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color.White
+            focusedContainerColor = HunterSurface,
+            unfocusedContainerColor = HunterSurface,
+            focusedBorderColor = HunterPrimary,
+            unfocusedBorderColor = HunterPrimary.copy(alpha = 0.3f),
+            cursorColor = HunterPrimary,
+            focusedTextColor = HunterTextPrimary,
+            unfocusedTextColor = HunterTextPrimary
         )
     )
 }
@@ -258,14 +290,15 @@ private fun MuscleGroupFilterChips(
     ) {
         item {
             HunterChip(
-                text = "Todo",
+                text = stringResource(R.string.main_filter_all),
                 isSelected = selectedGroup == null,
                 onClick = { onGroupSelected(null) }
             )
         }
-        items(MuscleGroup.values().toList()) { group ->
+        items(MuscleGroup.entries) { group ->
             HunterChip(
-                text = group.displayName,
+                // REFACTORIZACIÓN: Uso del nuevo UiMapper
+                text = stringResource(UiMappers.getDisplayNameRes(group)),
                 isSelected = selectedGroup == group,
                 onClick = { onGroupSelected(group) }
             )
@@ -284,8 +317,8 @@ private fun HunterChip(
             .clickable { onClick() }
             .height(32.dp),
         shape = RoundedCornerShape(100), // Pill shape
-        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-        border = if (!isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)) else null
+        color = if (isSelected) HunterPrimary else HunterSurface,
+        border = if (!isSelected) BorderStroke(1.dp, HunterPrimary.copy(alpha = 0.3f)) else null
     ) {
         Box(
             contentAlignment = Alignment.Center,
@@ -294,7 +327,7 @@ private fun HunterChip(
             Text(
                 text = text,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface
+                color = if (isSelected) HunterBlack else HunterTextPrimary
             )
         }
     }
@@ -321,21 +354,21 @@ private fun MuscleGroupSection(
                 modifier = Modifier
                     .size(width = 4.dp, height = 24.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(MaterialTheme.colorScheme.primary)
+                    .background(HunterPrimary)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = group.displayName.uppercase(),
+                text = stringResource(UiMappers.getDisplayNameRes(group)).uppercase(),
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
                 ),
-                color = Color.White
+                color = HunterTextPrimary
             )
             Spacer(modifier = Modifier.width(8.dp))
             Badge(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                contentColor = MaterialTheme.colorScheme.primary
+                containerColor = HunterSurface,
+                contentColor = HunterPrimary
             ) {
                 Text("$exerciseCount")
             }
@@ -344,7 +377,7 @@ private fun MuscleGroupSection(
         Icon(
             imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
+            tint = HunterTextSecondary
         )
     }
 }
@@ -355,15 +388,14 @@ private fun ExerciseHunterCard(
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
-    // Estilo "Tarjeta de Misión"
     Card(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        colors = CardDefaults.cardColors(containerColor = HunterSurface),
+        border = BorderStroke(1.dp, ScreenColors.MainScreen.IconBorder)
     ) {
         Row(
             modifier = Modifier
@@ -371,28 +403,25 @@ private fun ExerciseHunterCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Imagen del ejercicio con borde brillante
             NeonIconBox(exercise = exercise)
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Información
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = exercise.name,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White,
+                    color = HunterTextPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
             }
 
-            // Botón de opciones
             IconButton(onClick = onLongClick) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
-                    contentDescription = "Opciones",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    contentDescription = stringResource(R.string.main_cd_options),
+                    tint = HunterTextSecondary
                 )
             }
         }
@@ -409,28 +438,21 @@ fun NeonIconBox(
         modifier = modifier
             .size(70.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.background)
-            .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+            .background(HunterBlack)
+            .border(1.dp, ScreenColors.MainScreen.IconBorder, RoundedCornerShape(12.dp))
     ) {
-        // Si es el icono vectorial, aplicamos el EFECTO NEÓN
         val iconRes = getGroupIcon(exercise.muscleGroup)
-        val primaryColor = MaterialTheme.colorScheme.primary
 
         // 1. Capa de brillo (Glow) detrás
-        // Dibujamos el icono un poco más grande, con alpha bajo y desenfocado
-        // Nota: Compose no tiene blur nativo fácil en DrawScope sin Android 12+,
-        // así que un truco visual es pintar un círculo difuso o el mismo icono con alpha.
-        // Para simular el "brillo" de la imagen que pasaste, usaremos un gradiente radial suave detrás.
-
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
-                .size(50.dp) // Un poco más grande que el icono
+                .size(50.dp)
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            primaryColor.copy(alpha = 0.6f), // Centro brillante
-                            Color.Transparent // Borde transparente
+                            ScreenColors.MainScreen.NeonGlowStart,
+                            ScreenColors.MainScreen.NeonGlowEnd
                         )
                     )
                 )
@@ -440,10 +462,10 @@ fun NeonIconBox(
         Icon(
             painter = painterResource(id = iconRes),
             contentDescription = null,
-            tint = primaryColor, // Azul eléctrico sólido
+            tint = HunterPrimary,
             modifier = Modifier
                 .align(Alignment.Center)
-                .size(36.dp) // Tamaño del icono
+                .size(36.dp)
         )
     }
 }
@@ -451,13 +473,13 @@ fun NeonIconBox(
 @DrawableRes
 private fun getGroupIcon(group: MuscleGroup): Int {
     return when (group) {
-        MuscleGroup.LEGS -> com.gymlog.app.R.drawable.ic_espalda
-        MuscleGroup.BICEPS -> com.gymlog.app.R.drawable.ic_biceps
-        MuscleGroup.GLUTES -> com.gymlog.app.R.drawable.ic_gluteos
-        MuscleGroup.CHEST -> com.gymlog.app.R.drawable.ic_torso
-        MuscleGroup.TRICEPS -> com.gymlog.app.R.drawable.ic_triceps
-        MuscleGroup.SHOULDERS -> com.gymlog.app.R.drawable.ic_hombros
-        MuscleGroup.BACK -> com.gymlog.app.R.drawable.ic_espalda
-        else -> com.gymlog.app.R.drawable.ic_exercise_placeholder
+        MuscleGroup.LEGS -> R.drawable.ic_pierna
+        MuscleGroup.BICEPS -> R.drawable.ic_biceps
+        MuscleGroup.GLUTES -> R.drawable.ic_gluteos
+        MuscleGroup.CHEST -> R.drawable.ic_torso
+        MuscleGroup.TRICEPS -> R.drawable.ic_triceps
+        MuscleGroup.SHOULDERS -> R.drawable.ic_hombros
+        MuscleGroup.BACK -> R.drawable.ic_espalda
+        else -> R.drawable.ic_exercise_placeholder
     }
 }

@@ -1,4 +1,217 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">GymLevelUp</string>
+
+    <string name="common_cancel">CANCELAR</string>
+    <string name="common_save">GUARDAR</string>
+    <string name="common_delete">ELIMINAR</string>
+    <string name="common_edit">EDITAR</string>
+    <string name="common_close">CERRAR</string>
+    <string name="common_accept">ACEPTAR</string>
+    <string name="common_back">Volver</string>
+    <string name="common_loading">Cargando...</string>
+    <string name="common_required_field">Requerido</string>
+    <string name="common_series">SERIES</string>
+    <string name="common_reps">REPS</string>
+    <string name="common_weight_kg">PESO (KG)</string>
+    <string name="common_kg">KG</string>
+
+    <string name="nav_exercises">Ejercicios</string>
+    <string name="nav_calendars">Calendarios</string>
+    <string name="nav_timer">Cronómetro</string>
+
+    <string name="main_welcome_title">BIENVENIDO, JUGADOR</string>
+    <string name="main_exercises_header">Ejercicios</string>
+    <string name="main_search_placeholder">Buscar ejercicio...</string>
+    <string name="main_search_clear">Limpiar</string>
+    <string name="main_filter_all">Todo</string>
+    <string name="main_no_exercises_found">No se encontraron ejercicios...</string>
+    <string name="main_delete_dialog_title">¿Eliminar ejercicio?</string>
+    <string name="main_delete_dialog_text">Se eliminará \'%1$s\' y todo su registro.</string>
+    <string name="main_cd_backup">Backup</string>
+    <string name="main_cd_new">Nuevo</string>
+    <string name="main_cd_options">Opciones</string>
+
+    <string name="exercise_create_title">NUEVO OBJETIVO</string>
+    <string name="exercise_edit_title">EDITAR FICHA</string>
+    <string name="exercise_add_visual">AÑADIR VISUAL</string>
+    <string name="exercise_update_visual">ACTUALIZAR VISUAL</string>
+    <string name="exercise_section_id_data">DATOS DE IDENTIFICACIÓN</string>
+    <string name="exercise_name_label">NOMBRE CLAVE *</string>
+    <string name="exercise_desc_label">DESCRIPCIÓN TÁCTICA</string>
+    <string name="exercise_select_class_label">SELECCIONAR CLASE *</string>
+    <string name="exercise_section_initial_params">PARÁMETROS INICIALES (OPCIONAL)</string>
+    <string name="exercise_btn_register">REGISTRAR OBJETIVO</string>
+    <string name="exercise_btn_save_changes">GUARDAR CAMBIOS</string>
+    <string name="exercise_dialog_group_title">SELECCIONAR CLASE</string>
+    <string name="exercise_dialog_group_title_edit">GRUPO MUSCULAR</string>
+    <string name="exercise_dialog_discard_title">¿DESCARTAR CAMBIOS?</string>
+    <string name="exercise_dialog_discard_text">Tienes modificaciones sin guardar. ¿Salir de todas formas?</string>
+    <string name="exercise_dialog_discard_confirm">SALIR</string>
+
+    <string name="detail_title">DATOS DE MISIÓN</string>
+    <string name="detail_section_combat_config">CONFIGURACIÓN DE COMBATE</string>
+    <string name="detail_no_variants">No hay variantes configuradas.</string>
+    <string name="detail_section_notes">NOTAS TÁCTICAS</string>
+    <string name="detail_notes_placeholder">Sin observaciones...</string>
+    <string name="detail_section_history">REGISTRO DE COMBATE</string>
+    <string name="detail_btn_delete_history">BORRAR TODO</string>
+    <string name="detail_no_history">Sin registros previos.</string>
+    <string name="detail_dialog_delete_history_title">BORRAR REGISTRO</string>
+    <string name="detail_dialog_delete_history_text">Se eliminará todo el historial. Irreversible.</string>
+    <string name="detail_dialog_delete_entry_title">ELIMINAR ENTRADA</string>
+    <string name="detail_dialog_delete_entry_text">¿Eliminar este registro?</string>
+    <string name="detail_dialog_delete_set_title">ELIMINAR VARIANTE</string>
+    <string name="detail_dialog_delete_set_text">¿Eliminar este set de la configuración?</string>
+    <string name="detail_cd_add_set">Añadir Set</string>
+    <string name="detail_cd_edit_file">Editar Ficha</string>
+
+    <string name="set_edit_title">CONFIGURAR VARIANTE</string>
+    <string name="set_section_params">PARÁMETROS DE COMBATE</string>
+    <string name="set_label_reps">REPETICIONES</string>
+    <string name="set_btn_save">GUARDAR VARIANTE</string>
+    <string name="set_dialog_discard_title">¿DESCARTAR?</string>
+    <string name="set_dialog_discard_text">Los cambios en los parámetros no se han guardado.</string>
+
+    <string name="calendars_title">CRONOGRAMAS</string>
+    <string name="calendars_empty_state_title">SIN PLANES ACTIVOS</string>
+    <string name="calendars_btn_create">INICIAR NUEVO PLAN</string>
+    <string name="calendars_created_prefix">Creado: %1$s</string>
+    <string name="calendars_dialog_delete_title">ELIMINAR PLAN</string>
+    <string name="calendars_dialog_delete_text">¿Destruir el calendario \'%1$s\'? Se perderán todos los registros asociados.</string>
+
+    <string name="calendar_create_title">NUEVO PLAN</string>
+    <string name="calendar_create_section_basic">CONFIGURACIÓN BÁSICA</string>
+    <string name="calendar_create_name_label">NOMBRE DEL PLAN</string>
+    <string name="calendar_create_section_duration">DURACIÓN</string>
+    <string name="calendar_create_months_label">MESES</string>
+    <string name="calendar_create_btn_generate">GENERAR CALENDARIO</string>
+
+    <string name="calendar_detail_default_title">CALENDARIO</string>
+    <string name="calendar_detail_swap_prompt">SELECCIONA DESTINO...</string>
+    <string name="calendar_detail_btn_mark">MARCAR</string>
+    <string name="calendar_detail_btn_unmark">DESMARCAR</string>
+    <string name="calendar_detail_btn_ready">LISTO</string>
+    <string name="calendar_detail_dialog_reset_title">RESETEAR PROGRESO</string>
+    <string name="calendar_detail_dialog_reset_text">¿Limpiar todos los completados de este calendario?</string>
+    <string name="calendar_detail_cd_clean">Limpiar</string>
+    <string name="day_mon_short">L</string>
+    <string name="day_tue_short">M</string>
+    <string name="day_wed_short">X</string>
+    <string name="day_thu_short">J</string>
+    <string name="day_fri_short">V</string>
+    <string name="day_sat_short">S</string>
+    <string name="day_sun_short">D</string>
+
+    <string name="day_slot_default_title">PLANIFICACIÓN</string>
+    <string name="day_slot_mission_status">ESTADO DE MISIÓN</string>
+    <string name="day_slot_status_completed">CUMPLIDA</string>
+    <string name="day_slot_status_pending">PENDIENTE</string>
+    <string name="day_slot_btn_start">INICIAR SECUENCIA</string>
+    <string name="day_slot_section_class">CLASE DE COMBATE</string>
+    <string name="day_slot_section_loadout">EQUIPAMIENTO (EJERCICIOS)</string>
+    <string name="day_slot_btn_confirm">CONFIRMAR CAMBIOS</string>
+    <string name="day_slot_sheet_title">INVENTARIO DE HABILIDADES</string>
+    <string name="day_slot_sheet_no_exercises">No hay ejercicios disponibles para esta clase.</string>
+    <string name="day_slot_variant_prefix">VARIANTE</string>
+    <string name="day_slot_variant_unconfigured">SIN CONFIGURAR</string>
+    <string name="day_slot_btn_equip">EQUIPAR HABILIDAD</string>
+    <string name="day_slot_warn_no_class">⚠️ Selecciona una clase de combate primero.</string>
+    <string name="day_slot_msg_cardio_rest">Día de recuperación o resistencia. No se requiere equipamiento pesado.</string>
+    <string name="day_slot_msg_empty">Slots vacíos.</string>
+
+    <string name="training_title">ZONA DE COMBATE</string>
+    <string name="training_dialog_exit_title">PAUSAR MISIÓN</string>
+    <string name="training_dialog_exit_text">El entrenamiento está activo. Si sales ahora, perderás el estado actual. ¿Retirarse?</string>
+    <string name="training_dialog_exit_confirm">RETIRARSE</string>
+    <string name="training_section_objectives">OBJETIVOS DE MISIÓN</string>
+    <string name="training_no_objectives">Sin objetivos.</string>
+    <string name="training_rest_config_title">TIEMPO DE DESCANSO BASE</string>
+    <string name="training_min_suffix">MIN</string>
+    <string name="training_btn_start">INICIAR MISIÓN</string>
+    <string name="training_btn_finish">FINALIZAR MISIÓN</string>
+    <string name="training_progress_label">PROGRESO DE MISIÓN</string>
+    <string name="training_btn_stop_alarm">DETENER ALARMA</string>
+    <string name="training_system_waiting">SISTEMA EN ESPERA...</string>
+    <string name="training_no_missions">NO HAY MISIONES ASIGNADAS</string>
+    <string name="training_hud_others">OTRAS VARIANTES</string>
+    <string name="training_hud_variant_fmt">VARIANTE #%1$d</string>
+    <string name="training_hud_notes_label">NOTAS TÁCTICAS</string>
+    <string name="training_hud_current_series">SERIE ACTUAL</string>
+    <string name="training_hud_btn_start_series">INICIAR SERIE</string>
+    <string name="training_hud_btn_end_series">TERMINAR SERIE</string>
+    <string name="training_hud_desc_prefix">DESC:</string>
+    <string name="training_hud_btn_next">SIGUIENTE OBJETIVO >></string>
+    <string name="training_hud_active_label">ACTIVO</string>
+    <string name="training_dialog_finish_series_title">OBJETIVO CUMPLIDO</string>
+    <string name="training_dialog_finish_series_text">Has completado todas las series requeridas. ¿Finalizar ejercicio?</string>
+    <string name="training_dialog_finish_series_confirm">FINALIZAR</string>
+    <string name="training_dialog_force_finish_title">¿FORZAR FINALIZACIÓN?</string>
+    <string name="training_dialog_force_finish_text">Aún quedan series pendientes. ¿Confirmas terminar manualmente?</string>
+    <string name="training_dialog_force_finish_confirm">FORZAR</string>
+
+    <string name="timer_title">CRONÓMETRO</string>
+    <string name="timer_system_active">SISTEMA ACTIVO</string>
+    <string name="timer_system_waiting">SISTEMA EN ESPERA</string>
+    <string name="timer_dialog_finished_title">TIEMPO AGOTADO</string>
+    <string name="timer_dialog_finished_text">El contador ha llegado a cero.</string>
+    <string name="timer_notification_title">¡Tiempo terminado!</string>
+    <string name="timer_notification_text">El %1$s ha llegado a 0</string>
+    <string name="timer_notification_action_stop">Detener</string>
+
+    <string name="backup_title">SISTEMA DE DATOS</string>
+    <string name="backup_export_title">EXPORTAR DATOS</string>
+    <string name="backup_export_desc">Genera un archivo JSON con todo tu progreso, ejercicios y calendarios. Guarda este archivo en un lugar seguro.</string>
+    <string name="backup_btn_create">CREAR COPIA DE SEGURIDAD</string>
+    <string name="backup_import_title">RESTAURAR DATOS</string>
+    <string name="backup_import_desc">Carga un archivo de respaldo. ADVERTENCIA: Esto sobrescribirá todos los datos actuales.</string>
+    <string name="backup_btn_select_file">SELECCIONAR ARCHIVO</string>
+    <string name="backup_processing_title">PROCESANDO...</string>
+    <string name="backup_processing_text">Por favor espera. No cierres la aplicación.</string>
+    <string name="backup_dialog_success_title">OPERACIÓN EXITOSA</string>
+    <string name="backup_dialog_error_title">ERROR DE SISTEMA</string>
+    <string name="backup_msg_export_success">Datos exportados con éxito a la ubicación seleccionada.</string>
+    <string name="backup_msg_export_error">Error al exportar: %1$s</string>
+    <string name="backup_msg_import_success">Datos importados con éxito y base de datos restaurada.</string>
+    <string name="backup_msg_import_error">Error al importar. Asegúrate de que el archivo es un JSON válido. Mensaje: %1$s</string>
+
+    <string name="muscle_legs">Piernas</string>
+    <string name="muscle_glutes">Gluteos</string>
+    <string name="muscle_back">Espalda</string>
+    <string name="muscle_chest">Torso</string>
+    <string name="muscle_biceps">Biceps</string>
+    <string name="muscle_triceps">Triceps</string>
+    <string name="muscle_shoulders">Hombros</string>
+
+    <string name="cat_full_body">Full Body</string>
+    <string name="cat_chest">Torso</string>
+    <string name="cat_legs">Pierna</string>
+    <string name="cat_glutes">Glúteo</string>
+    <string name="cat_back">Espalda</string>
+    <string name="cat_biceps">Bíceps</string>
+    <string name="cat_triceps">Tríceps</string>
+    <string name="cat_shoulders">Hombros</string>
+    <string name="cat_cardio">Cardio</string>
+    <string name="cat_rest">Descanso</string>
+
+    <string name="dow_monday">Lunes</string>
+    <string name="dow_tuesday">Martes</string>
+    <string name="dow_wednesday">Miércoles</string>
+    <string name="dow_thursday">Jueves</string>
+    <string name="dow_friday">Viernes</string>
+    <string name="dow_saturday">Sábado</string>
+    <string name="dow_sunday">Domingo</string>
+
+    <string name="notification_channel_name">Timer Notifications</string>
+    <string name="notification_channel_description">Notificaciones del cronómetro</string>
+    <string name="timer_type_standard">Cronómetro</string>
+    <string name="timer_type_training">Descanso de Serie</string>
+
+    <string name="sample_ex_squat_name">Sentadilla con Barra</string>
+    <string name="sample_ex_squat_desc">Ejercicio compuesto principal para piernas.</string>
+    <string name="sample_ex_bench_name">Press de Banca</string>
+    <string name="sample_ex_bench_desc">Ejercicio principal de empuje para torso.</string>
+    <string name="sample_ex_deadlift_name">Peso Muerto</string>
+    <string name="sample_ex_deadlift_desc">Ejercicio de cadena posterior completo.</string>
+
 </resources>

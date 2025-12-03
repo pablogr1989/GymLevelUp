@@ -10,13 +10,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.gymlog.app.ui.theme.HunterButton
-import com.gymlog.app.ui.theme.HunterCard
-import com.gymlog.app.ui.theme.HunterInput
+import com.gymlog.app.R
+import com.gymlog.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,18 +37,26 @@ fun CreateCalendarScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = HunterBlack,
         topBar = {
             TopAppBar(
-                title = { Text("NUEVO PLAN", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp)) },
+                title = {
+                    Text(
+                        stringResource(R.string.calendar_create_title),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp
+                        )
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.Close, contentDescription = "Cancelar", tint = Color.White)
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_cancel), tint = HunterTextPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = Color.White
+                    containerColor = HunterBlack,
+                    titleContentColor = HunterTextPrimary
                 )
             )
         }
@@ -65,12 +73,12 @@ fun CreateCalendarScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text("CONFIGURACIÓN BÁSICA", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.calendar_create_section_basic), style = MaterialTheme.typography.labelLarge, color = HunterPrimary)
 
                     HunterInput(
                         value = name,
                         onValueChange = viewModel::updateName,
-                        label = "NOMBRE DEL PLAN"
+                        label = stringResource(R.string.calendar_create_name_label)
                     )
                 }
             }
@@ -80,7 +88,7 @@ fun CreateCalendarScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text("DURACIÓN", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.calendar_create_section_duration), style = MaterialTheme.typography.labelLarge, color = HunterPrimary)
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -90,30 +98,30 @@ fun CreateCalendarScreen(
                         FilledIconButton(
                             onClick = { viewModel.decrementMonths() },
                             enabled = monthCount > 1,
-                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = HunterSurface)
                         ) {
-                            Icon(Icons.Default.Remove, null)
+                            Icon(Icons.Default.Remove, null, tint = HunterTextPrimary)
                         }
 
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = "$monthCount",
                                 style = MaterialTheme.typography.displayMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White
+                                color = HunterTextPrimary
                             )
                             Text(
-                                text = "MESES",
+                                text = stringResource(R.string.calendar_create_months_label),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = HunterTextSecondary
                             )
                         }
 
                         FilledIconButton(
                             onClick = { viewModel.incrementMonths() },
                             enabled = monthCount < 12,
-                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = HunterSurface)
                         ) {
-                            Icon(Icons.Default.Add, null)
+                            Icon(Icons.Default.Add, null, tint = HunterTextPrimary)
                         }
                     }
                 }
@@ -122,7 +130,7 @@ fun CreateCalendarScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             HunterButton(
-                text = "GENERAR CALENDARIO",
+                text = stringResource(R.string.calendar_create_btn_generate),
                 onClick = viewModel::createCalendar,
                 enabled = !isLoading,
                 icon = {

@@ -20,13 +20,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.gymlog.app.R
 import com.gymlog.app.data.local.entity.MuscleGroup
 import com.gymlog.app.ui.theme.*
+import com.gymlog.app.ui.util.UiMappers
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,12 +67,12 @@ fun EditExerciseScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = HunterBlack,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        "EDITAR FICHA",
+                        stringResource(R.string.exercise_edit_title),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.sp
@@ -78,12 +81,12 @@ fun EditExerciseScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.onBackPressed() }) {
-                        Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.White)
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_close), tint = HunterTextPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = Color.White
+                    containerColor = HunterBlack,
+                    titleContentColor = HunterTextPrimary
                 )
             )
         }
@@ -110,7 +113,7 @@ fun EditExerciseScreen(
                     if (imageUri != null) {
                         AsyncImage(
                             model = imageUri,
-                            contentDescription = "Imagen del ejercicio",
+                            contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
@@ -118,13 +121,13 @@ fun EditExerciseScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.4f)),
+                                .background(ScreenColors.CreateExercise.ImageOverlay),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Edit,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = HunterTextPrimary,
                                 modifier = Modifier.size(32.dp)
                             )
                         }
@@ -137,10 +140,10 @@ fun EditExerciseScreen(
                                 imageVector = Icons.Default.AddPhotoAlternate,
                                 contentDescription = null,
                                 modifier = Modifier.size(48.dp),
-                                tint = HunterPrimary.copy(alpha = 0.5f)
+                                tint = ScreenColors.CreateExercise.IconTint
                             )
                             Text(
-                                text = "ACTUALIZAR VISUAL",
+                                text = stringResource(R.string.exercise_update_visual),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = HunterPrimary
                             )
@@ -155,26 +158,26 @@ fun EditExerciseScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text("DATOS DE IDENTIFICACIÓN", style = MaterialTheme.typography.labelLarge, color = HunterPrimary)
+                    Text(stringResource(R.string.exercise_section_id_data), style = MaterialTheme.typography.labelLarge, color = HunterPrimary)
 
                     HunterInput(
                         value = name,
                         onValueChange = viewModel::updateName,
-                        label = "NOMBRE CLAVE *"
+                        label = stringResource(R.string.exercise_name_label)
                     )
 
                     HunterInput(
                         value = description,
                         onValueChange = viewModel::updateDescription,
-                        label = "DESCRIPCIÓN TÁCTICA"
+                        label = stringResource(R.string.exercise_desc_label)
                     )
 
                     OutlinedCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { showMuscleGroupDialog = true },
-                        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.background),
-                        border = BorderStroke(1.dp, if (showMuscleGroupError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                        colors = CardDefaults.outlinedCardColors(containerColor = HunterBlack),
+                        border = BorderStroke(1.dp, if (showMuscleGroupError) MaterialTheme.colorScheme.error else HunterPrimary.copy(alpha = 0.3f)),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Row(
@@ -183,9 +186,10 @@ fun EditExerciseScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = selectedMuscleGroup?.displayName?.uppercase() ?: "SELECCIONAR CLASE *",
+                                text = selectedMuscleGroup?.let { stringResource(UiMappers.getDisplayNameRes(it)).uppercase() }
+                                    ?: stringResource(R.string.exercise_select_class_label),
                                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                color = if (selectedMuscleGroup != null) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (selectedMuscleGroup != null) HunterTextPrimary else HunterTextSecondary
                             )
                             Icon(Icons.Default.ArrowDropDown, null, tint = HunterPrimary)
                         }
@@ -196,7 +200,7 @@ fun EditExerciseScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             HunterButton(
-                text = "GUARDAR CAMBIOS",
+                text = stringResource(R.string.exercise_btn_save_changes),
                 onClick = viewModel::saveExercise,
                 enabled = !isLoading,
                 icon = {
@@ -210,11 +214,11 @@ fun EditExerciseScreen(
     if (showMuscleGroupDialog) {
         AlertDialog(
             onDismissRequest = { showMuscleGroupDialog = false },
-            containerColor = MaterialTheme.colorScheme.surface,
-            title = { Text("GRUPO MUSCULAR", color = Color.White, fontWeight = FontWeight.Bold) },
+            containerColor = HunterSurface,
+            title = { Text(stringResource(R.string.exercise_dialog_group_title_edit), color = HunterTextPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MuscleGroup.values().forEach { group ->
+                    MuscleGroup.entries.forEach { group ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -229,12 +233,12 @@ fun EditExerciseScreen(
                             RadioButton(
                                 selected = selectedMuscleGroup == group,
                                 onClick = null,
-                                colors = RadioButtonDefaults.colors(selectedColor = HunterPrimary, unselectedColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                                colors = RadioButtonDefaults.colors(selectedColor = HunterPrimary, unselectedColor = HunterTextSecondary)
                             )
                             Text(
-                                text = group.displayName.uppercase(),
+                                text = stringResource(UiMappers.getDisplayNameRes(group)).uppercase(),
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White
+                                color = HunterTextPrimary
                             )
                         }
                     }
@@ -243,7 +247,7 @@ fun EditExerciseScreen(
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showMuscleGroupDialog = false }) {
-                    Text("CANCELAR", color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.common_cancel), color = HunterTextPrimary)
                 }
             }
         )
@@ -251,9 +255,9 @@ fun EditExerciseScreen(
 
     if (showExitConfirmation) {
         HunterConfirmDialog(
-            title = "¿DESCARTAR CAMBIOS?",
-            text = "Tienes modificaciones sin guardar. ¿Salir de todas formas?",
-            confirmText = "SALIR",
+            title = stringResource(R.string.exercise_dialog_discard_title),
+            text = stringResource(R.string.exercise_dialog_discard_text),
+            confirmText = stringResource(R.string.exercise_dialog_discard_confirm),
             onConfirm = viewModel::confirmExit,
             onDismiss = viewModel::dismissExitConfirmation
         )

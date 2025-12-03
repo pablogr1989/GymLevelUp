@@ -10,11 +10,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gymlog.app.R
 import com.gymlog.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,12 +44,12 @@ fun EditSetScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = HunterBlack,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        "CONFIGURAR VARIANTE",
+                        stringResource(R.string.set_edit_title),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.sp
@@ -56,12 +58,12 @@ fun EditSetScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.onBackPressed() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = Color.White)
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = HunterTextPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = Color.White
+                    containerColor = HunterBlack,
+                    titleContentColor = HunterTextPrimary
                 )
             )
         }
@@ -78,26 +80,26 @@ fun EditSetScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text("PARÁMETROS DE COMBATE", style = MaterialTheme.typography.labelLarge, color = HunterPrimary)
+                    Text(stringResource(R.string.set_section_params), style = MaterialTheme.typography.labelLarge, color = HunterPrimary)
 
                     HunterInput(
                         value = series,
                         onValueChange = viewModel::updateSeries,
-                        label = "SERIES",
+                        label = stringResource(R.string.common_series),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
 
                     HunterInput(
                         value = reps,
                         onValueChange = viewModel::updateReps,
-                        label = "REPETICIONES",
+                        label = stringResource(R.string.set_label_reps),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
 
                     HunterInput(
                         value = weight,
                         onValueChange = viewModel::updateWeight,
-                        label = "PESO (KG)",
+                        label = stringResource(R.string.common_weight_kg),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
                 }
@@ -106,7 +108,7 @@ fun EditSetScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             HunterButton(
-                text = "GUARDAR VARIANTE",
+                text = stringResource(R.string.set_btn_save),
                 onClick = viewModel::saveSet,
                 enabled = !isLoading,
                 icon = {
@@ -119,9 +121,9 @@ fun EditSetScreen(
 
     if (showExitConfirmation) {
         HunterConfirmDialog(
-            title = "¿DESCARTAR?",
-            text = "Los cambios en los parámetros no se han guardado.",
-            confirmText = "SALIR",
+            title = stringResource(R.string.set_dialog_discard_title),
+            text = stringResource(R.string.set_dialog_discard_text),
+            confirmText = stringResource(R.string.exercise_dialog_discard_confirm), // Reutilizamos "SALIR"
             onConfirm = viewModel::confirmExit,
             onDismiss = viewModel::dismissExitConfirmation
         )

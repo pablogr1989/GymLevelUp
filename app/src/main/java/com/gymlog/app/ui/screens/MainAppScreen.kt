@@ -1,5 +1,6 @@
 package com.gymlog.app.ui.screens
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -7,34 +8,37 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.gymlog.app.ui.screens.calendars.CalendarsListScreen
-import com.gymlog.app.ui.screens.main.MainScreen
-import com.gymlog.app.ui.screens.timer.TimerScreen
+import com.gymlog.app.R
 import com.gymlog.app.ui.navigation.Screen
 import com.gymlog.app.ui.screens.backup.BackupScreen
 import com.gymlog.app.ui.screens.calendars.CalendarDetailScreen
+import com.gymlog.app.ui.screens.calendars.CalendarsListScreen
 import com.gymlog.app.ui.screens.calendars.CreateCalendarScreen
 import com.gymlog.app.ui.screens.calendars.DaySlotDetailScreen
 import com.gymlog.app.ui.screens.create.CreateExerciseScreen
 import com.gymlog.app.ui.screens.detail.ExerciseDetailScreen
 import com.gymlog.app.ui.screens.edit.EditExerciseScreen
 import com.gymlog.app.ui.screens.edit.EditSetScreen
+import com.gymlog.app.ui.screens.main.MainScreen
+import com.gymlog.app.ui.screens.timer.TimerScreen
 import com.gymlog.app.ui.screens.training.TrainingModeScreen
+import com.gymlog.app.ui.theme.*
 
 sealed class BottomNavItem(
     val route: String,
-    val title: String,
+    @StringRes val titleResId: Int,
     val icon: ImageVector
 ) {
-    object Exercises : BottomNavItem("exercises_tab", "Ejercicios", Icons.Default.FitnessCenter)
-    object Calendars : BottomNavItem("calendars_tab", "Calendarios", Icons.Default.CalendarMonth)
-    object Timer : BottomNavItem("timer_tab", "Cronometro", Icons.Default.Timer)
+    object Exercises : BottomNavItem("exercises_tab", R.string.nav_exercises, Icons.Default.FitnessCenter)
+    object Calendars : BottomNavItem("calendars_tab", R.string.nav_calendars, Icons.Default.CalendarMonth)
+    object Timer : BottomNavItem("timer_tab", R.string.nav_timer, Icons.Default.Timer)
 }
 
 @Composable
@@ -47,16 +51,22 @@ fun MainAppScreen() {
     )
 
     Scaffold(
+        containerColor = HunterBlack, // Fondo global seguro
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = HunterSurface, // Fondo de la barra inferior
+                contentColor = HunterTextSecondary // Color base de íconos no seleccionados
+            ) {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
 
                 items.forEach { item ->
+                    val isSelected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+
                     NavigationBarItem(
-                        icon = { Icon(item.icon, contentDescription = item.title) },
-                        label = { Text(item.title) },
-                        selected = currentDestination?.hierarchy?.any { it.route == item.route } == true,
+                        icon = { Icon(item.icon, contentDescription = stringResource(item.titleResId)) },
+                        label = { Text(stringResource(item.titleResId)) },
+                        selected = isSelected,
                         onClick = {
                             navController.navigate(item.route) {
                                 popUpTo(navController.graph.findStartDestination().id) {
@@ -65,7 +75,14 @@ fun MainAppScreen() {
                                 launchSingleTop = true
                                 restoreState = true
                             }
-                        }
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = HunterBlack, // Icono negro sobre indicador brillante
+                            selectedTextColor = HunterPrimary,
+                            indicatorColor = HunterPrimary, // Fondo brillante del ícono seleccionado
+                            unselectedIconColor = HunterTextSecondary,
+                            unselectedTextColor = HunterTextSecondary
+                        )
                     )
                 }
             }

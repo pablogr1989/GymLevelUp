@@ -20,24 +20,24 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gymlog.app.R
 import com.gymlog.app.data.local.entity.DayCategory
-import com.gymlog.app.data.local.entity.MuscleGroup
 import com.gymlog.app.domain.model.Exercise
 import com.gymlog.app.domain.model.Set as GymSet
 import com.gymlog.app.ui.theme.*
+import com.gymlog.app.ui.util.UiMappers
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,7 +60,6 @@ fun DaySlotDetailScreen(
 
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    // CORREGIDO: rememberModalBottomSheetState no lleva containerColor
     val bottomSheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
@@ -80,12 +79,14 @@ fun DaySlotDetailScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = HunterBlack,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        daySlot?.dayOfWeek?.displayName?.uppercase() ?: "PLANIFICACIÓN",
+                        // REFACTORIZACIÓN CRÍTICA: Uso de UiMapper para el día
+                        daySlot?.dayOfWeek?.let { stringResource(UiMappers.getDisplayNameRes(it)).uppercase() }
+                            ?: stringResource(R.string.day_slot_default_title),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.sp
@@ -94,12 +95,12 @@ fun DaySlotDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = Color.White)
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = HunterTextPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = Color.White
+                    containerColor = HunterBlack,
+                    titleContentColor = HunterTextPrimary
                 )
             )
         }
@@ -131,19 +132,19 @@ fun DaySlotDetailScreen(
                 // 2. BOTÓN DE ACCIÓN (INICIAR)
                 if (selectedExercisesWithSets.isNotEmpty()) {
                     HunterButton(
-                        text = "INICIAR SECUENCIA",
+                        text = stringResource(R.string.day_slot_btn_start),
                         onClick = viewModel::startTraining,
                         color = if (completed) HunterCyan else HunterPurple,
-                        textColor = Color.White,
+                        textColor = HunterTextPrimary,
                         icon = {
-                            Icon(Icons.Default.PlayArrow, null, tint = Color.White)
+                            Icon(Icons.Default.PlayArrow, null, tint = HunterTextPrimary)
                         }
                     )
                 }
 
                 // 3. CLASE DE COMBATE (CATEGORÍAS)
                 HunterExpandableSection(
-                    title = "CLASE DE COMBATE",
+                    title = stringResource(R.string.day_slot_section_class),
                     isExpanded = isCategoriesExpanded,
                     onToggle = viewModel::toggleCategoriesExpansion
                 ) {
@@ -155,7 +156,7 @@ fun DaySlotDetailScreen(
 
                 // 4. LOADOUT (EJERCICIOS)
                 HunterExpandableSection(
-                    title = "EQUIPAMIENTO (EJERCICIOS)",
+                    title = stringResource(R.string.day_slot_section_loadout),
                     isExpanded = isExercisesExpanded,
                     onToggle = viewModel::toggleExercisesExpansion,
                     badgeCount = selectedExercisesWithSets.size
@@ -173,7 +174,7 @@ fun DaySlotDetailScreen(
 
                 // 5. GUARDAR
                 HunterButton(
-                    text = "CONFIRMAR CAMBIOS",
+                    text = stringResource(R.string.day_slot_btn_confirm),
                     onClick = viewModel::saveDaySlot,
                     enabled = !isLoading,
                     color = HunterPrimary
@@ -188,8 +189,8 @@ fun DaySlotDetailScreen(
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
             sheetState = bottomSheetState,
-            containerColor = MaterialTheme.colorScheme.surface, // Aquí es donde va el color
-            contentColor = Color.White
+            containerColor = HunterSurface,
+            contentColor = HunterTextPrimary
         ) {
             HunterInventorySheet(
                 exercises = filteredExercises,
@@ -224,14 +225,15 @@ private fun HunterMissionStatus(
         ) {
             Column {
                 Text(
-                    text = "ESTADO DE MISIÓN",
+                    text = stringResource(R.string.day_slot_mission_status),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = HunterTextSecondary
                 )
                 Text(
-                    text = if (completed) "CUMPLIDA" else "PENDIENTE",
+                    text = if (completed) stringResource(R.string.day_slot_status_completed)
+                    else stringResource(R.string.day_slot_status_pending),
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp),
-                    color = if (completed) HunterCyan else HunterSecondary
+                    color = if (completed) ScreenColors.DaySlotDetail.StatusCompleted else ScreenColors.DaySlotDetail.StatusPending
                 )
             }
 
@@ -240,8 +242,8 @@ private fun HunterMissionStatus(
                 modifier = Modifier
                     .size(width = 60.dp, height = 32.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(if (completed) HunterCyan.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant)
-                    .border(1.dp, if (completed) HunterCyan else MaterialTheme.colorScheme.outline.copy(0.3f), RoundedCornerShape(16.dp))
+                    .background(if (completed) HunterCyan.copy(alpha = 0.2f) else HunterSurface)
+                    .border(1.dp, if (completed) HunterCyan else HunterPrimary.copy(0.3f), RoundedCornerShape(16.dp))
             ) {
                 Box(
                     modifier = Modifier
@@ -249,7 +251,7 @@ private fun HunterMissionStatus(
                         .align(if (completed) Alignment.CenterEnd else Alignment.CenterStart)
                         .padding(4.dp)
                         .clip(CircleShape)
-                        .background(if (completed) HunterCyan else MaterialTheme.colorScheme.onSurfaceVariant)
+                        .background(if (completed) HunterCyan else HunterTextSecondary)
                 )
             }
         }
@@ -267,16 +269,16 @@ private fun HunterExpandableSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+            .border(1.dp, ScreenColors.DaySlotDetail.CardBorder, RoundedCornerShape(16.dp))
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
+            .background(HunterSurface)
     ) {
         // Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onToggle() }
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                .background(HunterSurface)
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -295,7 +297,7 @@ private fun HunterExpandableSection(
             Icon(
                 imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = HunterTextSecondary
             )
         }
 
@@ -330,14 +332,15 @@ private fun CategorySelectorGrid(
                             .height(40.dp)
                             .clickable { onToggleCategory(category) },
                         shape = RoundedCornerShape(8.dp),
-                        color = if (isSelected) HunterPrimary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.background,
-                        border = BorderStroke(1.dp, if (isSelected) HunterPrimary else MaterialTheme.colorScheme.outline.copy(0.3f))
+                        color = if (isSelected) HunterPrimary.copy(alpha = 0.2f) else HunterBlack,
+                        border = BorderStroke(1.dp, if (isSelected) HunterPrimary else HunterPrimary.copy(0.3f))
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
-                                text = category.displayName.uppercase(),
+                                // REFACTORIZACIÓN: Uso de UiMapper
+                                text = stringResource(UiMappers.getDisplayNameRes(category)).uppercase(),
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = if (isSelected) HunterPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (isSelected) HunterPrimary else HunterTextSecondary
                             )
                         }
                     }
@@ -363,14 +366,14 @@ private fun LoadoutContent(
     when {
         !hasCategories -> {
             Text(
-                "⚠️ Selecciona una clase de combate primero.",
+                stringResource(R.string.day_slot_warn_no_class),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = HunterTextSecondary
             )
         }
         isCardioOrRest -> {
             Text(
-                "Día de recuperación o resistencia. No se requiere equipamiento pesado.",
+                stringResource(R.string.day_slot_msg_cardio_rest),
                 style = MaterialTheme.typography.bodyMedium,
                 color = HunterCyan
             )
@@ -388,7 +391,7 @@ private fun LoadoutContent(
             ) {
                 Icon(Icons.Default.Add, null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("EQUIPAR HABILIDAD", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.day_slot_btn_equip), fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -402,9 +405,9 @@ private fun LoadoutContent(
                 )
             } else {
                 Text(
-                    "Slots vacíos.",
+                    stringResource(R.string.day_slot_msg_empty),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    color = HunterTextSecondary.copy(alpha = 0.5f),
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
@@ -455,7 +458,7 @@ private fun DraggableLoadoutList(
                 onDrag = { dragAmount ->
                     currentDragY += dragAmount
                     draggedIndex?.let { draggedIdx ->
-                        val draggedCenter = currentDragY + 35f // Mitad aprox de la altura
+                        val draggedCenter = currentDragY + 35f
                         var closestIndex = draggedIdx
                         var minDistance = Float.MAX_VALUE
 
@@ -499,10 +502,10 @@ private fun HunterDraggableCard(
     val backgroundColor = when {
         isDragged -> HunterPrimary.copy(alpha = 0.2f)
         isDraggedOver -> MaterialTheme.colorScheme.secondaryContainer
-        else -> MaterialTheme.colorScheme.background
+        else -> HunterBlack
     }
 
-    val borderColor = if (isDragged) HunterPrimary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+    val borderColor = if (isDragged) HunterPrimary else HunterPrimary.copy(alpha = 0.2f)
     val zIndex = if (isDragged) 10f else 0f
 
     Surface(
@@ -529,7 +532,7 @@ private fun HunterDraggableCard(
             Icon(
                 imageVector = Icons.Default.DragHandle,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = HunterTextSecondary,
                 modifier = Modifier
                     .size(24.dp)
                     .pointerInput(item.compositeId) {
@@ -561,20 +564,20 @@ private fun HunterDraggableCard(
                 Text(
                     text = item.exercise.name.uppercase(),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White,
+                    color = HunterTextPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
                 if (item.selectedSet != null) {
                     Text(
-                        text = "VARIANTE: ${item.selectedSet.series}×${item.selectedSet.reps} @ ${item.selectedSet.weightKg}KG",
+                        text = "${stringResource(R.string.day_slot_variant_prefix)}: ${item.selectedSet.series}×${item.selectedSet.reps} @ ${item.selectedSet.weightKg}${stringResource(R.string.common_kg)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = HunterPrimary
                     )
                 } else {
                     Text(
-                        text = "SIN CONFIGURAR",
+                        text = stringResource(R.string.day_slot_variant_unconfigured),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -584,8 +587,8 @@ private fun HunterDraggableCard(
             IconButton(onClick = onRemove) {
                 Icon(
                     imageVector = Icons.Default.Close,
-                    contentDescription = "Eliminar",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    contentDescription = stringResource(R.string.common_delete),
+                    tint = HunterTextSecondary.copy(alpha = 0.5f),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -611,19 +614,19 @@ private fun HunterInventorySheet(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "INVENTARIO DE HABILIDADES",
+                text = stringResource(R.string.day_slot_sheet_title),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
-                color = Color.White
+                color = HunterTextPrimary
             )
             IconButton(onClick = onDismiss) {
-                Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.White)
+                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_close), tint = HunterTextPrimary)
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         if (exercises.isEmpty()) {
-            Text("No hay ejercicios disponibles para esta clase.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.day_slot_sheet_no_exercises), color = HunterTextSecondary)
         }
 
         LazyColumn(
@@ -636,8 +639,8 @@ private fun HunterInventorySheet(
 
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = MaterialTheme.colorScheme.background,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                    color = HunterBlack,
+                    border = BorderStroke(1.dp, HunterPrimary.copy(alpha = 0.2f)),
                     modifier = Modifier.clickable {
                         if (hasSets) isSetsExpanded = !isSetsExpanded
                     }
@@ -653,34 +656,34 @@ private fun HunterInventorySheet(
                             Text(
                                 text = exercise.name,
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White
+                                color = HunterTextPrimary
                             )
                             Icon(
                                 imageVector = if (isSetsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                                 contentDescription = null,
-                                tint = if (hasSets) HunterPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                tint = if (hasSets) HunterPrimary else HunterTextSecondary.copy(alpha = 0.3f)
                             )
                         }
 
                         if (isSetsExpanded) {
-                            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                            Divider(color = HunterPrimary.copy(alpha = 0.1f))
                             exercise.sets.forEach { set ->
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable { onExerciseSetSelect(exercise, set) }
                                         .padding(16.dp)
-                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f)),
+                                        .background(HunterSurface.copy(alpha = 0.1f)),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("VARIANTE", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(stringResource(R.string.day_slot_variant_prefix), style = MaterialTheme.typography.bodySmall, color = HunterTextSecondary)
                                     Text(
-                                        "${set.series}×${set.reps} @ ${set.weightKg}KG",
+                                        "${set.series}×${set.reps} @ ${set.weightKg}${stringResource(R.string.common_kg)}",
                                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                                         color = HunterPrimary
                                     )
                                 }
-                                Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.05f))
+                                Divider(color = HunterPrimary.copy(alpha = 0.05f))
                             }
                         }
                     }

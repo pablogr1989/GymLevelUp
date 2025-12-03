@@ -15,10 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gymlog.app.R
 import com.gymlog.app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -46,12 +48,12 @@ fun BackupScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = HunterBlack,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        "SISTEMA DE DATOS",
+                        stringResource(R.string.backup_title),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Black,
                             letterSpacing = 1.sp
@@ -60,12 +62,12 @@ fun BackupScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = Color.White)
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = HunterTextPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = Color.White
+                    containerColor = HunterBlack,
+                    titleContentColor = HunterTextPrimary
                 )
             )
         }
@@ -87,13 +89,13 @@ fun BackupScreen(
                     imageVector = Icons.Default.Storage,
                     contentDescription = null,
                     modifier = Modifier.size(100.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    tint = HunterPrimary.copy(alpha = 0.2f)
                 )
                 Icon(
                     imageVector = Icons.Default.Save,
                     contentDescription = null,
                     modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = HunterPrimary
                 )
             }
 
@@ -104,30 +106,30 @@ fun BackupScreen(
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .background(HunterPurple.copy(alpha = 0.1f), CircleShape),
+                                .background(ScreenColors.Backup.ExportIconBg, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.CloudUpload, null, tint = HunterPurple)
+                            Icon(Icons.Default.CloudUpload, null, tint = ScreenColors.Backup.ExportIconTint)
                         }
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text("EXPORTAR DATOS", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.White)
+                        Text(stringResource(R.string.backup_export_title), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = HunterTextPrimary)
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "Genera un archivo JSON con todo tu progreso, ejercicios y calendarios. Guarda este archivo en un lugar seguro.",
+                        stringResource(R.string.backup_export_desc),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = HunterTextSecondary
                     )
                     Spacer(modifier = Modifier.height(20.dp))
 
                     HunterButton(
-                        text = "CREAR COPIA DE SEGURIDAD",
+                        text = stringResource(R.string.backup_btn_create),
                         onClick = {
                             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
                             exportLauncher.launch("GymLog_Backup_$timestamp.json")
                         },
-                        color = HunterPurple,
+                        color = ScreenColors.Backup.ExportColorButton,
                         enabled = !isProcessing
                     )
                 }
@@ -140,28 +142,28 @@ fun BackupScreen(
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f), CircleShape),
+                                .background(ScreenColors.Backup.ImportIconBg, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.CloudDownload, null, tint = MaterialTheme.colorScheme.error)
+                            Icon(Icons.Default.CloudDownload, null, tint = ScreenColors.Backup.ImportIconTint)
                         }
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text("RESTAURAR DATOS", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.backup_import_title), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = HunterSecondary)
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "Carga un archivo de respaldo. ADVERTENCIA: Esto sobrescribirá todos los datos actuales.",
+                        stringResource(R.string.backup_import_desc),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = HunterTextSecondary
                     )
                     Spacer(modifier = Modifier.height(20.dp))
 
                     HunterButton(
-                        text = "SELECCIONAR ARCHIVO",
+                        text = stringResource(R.string.backup_btn_select_file),
                         onClick = { importLauncher.launch(arrayOf("application/json")) },
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        textColor = MaterialTheme.colorScheme.error,
+                        color = ScreenColors.Backup.ImportColorButton,
+                        textColor = HunterSecondary,
                         enabled = !isProcessing
                     )
                 }
@@ -174,26 +176,26 @@ fun BackupScreen(
         is BackupState.Loading -> {
             AlertDialog(
                 onDismissRequest = {},
-                containerColor = MaterialTheme.colorScheme.surface,
-                title = { Text("PROCESANDO...", color = Color.White, fontWeight = FontWeight.Bold) },
-                text = { Text("Por favor espera. No cierres la aplicación.", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                containerColor = HunterSurface,
+                title = { Text(stringResource(R.string.backup_processing_title), color = HunterTextPrimary, fontWeight = FontWeight.Bold) },
+                text = { Text(stringResource(R.string.backup_processing_text), color = HunterTextSecondary) },
                 confirmButton = { CircularProgressIndicator(color = HunterPrimary) }
             )
         }
         is BackupState.Success -> {
             HunterConfirmDialog(
-                title = "OPERACIÓN EXITOSA",
+                title = stringResource(R.string.backup_dialog_success_title),
                 text = currentState.message,
-                confirmText = "ACEPTAR",
+                confirmText = stringResource(R.string.common_accept),
                 onConfirm = viewModel::dismissMessage,
                 onDismiss = {}
             )
         }
         is BackupState.Error -> {
             HunterConfirmDialog(
-                title = "ERROR DE SISTEMA",
+                title = stringResource(R.string.backup_dialog_error_title),
                 text = currentState.message,
-                confirmText = "CERRAR",
+                confirmText = stringResource(R.string.common_close),
                 onConfirm = viewModel::dismissMessage,
                 onDismiss = {}
             )

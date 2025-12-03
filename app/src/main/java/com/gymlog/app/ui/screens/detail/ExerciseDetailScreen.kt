@@ -4,13 +4,11 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -22,20 +20,22 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import coil.compose.AsyncImage
+import com.gymlog.app.R
 import com.gymlog.app.data.local.entity.MuscleGroup
 import com.gymlog.app.domain.model.Exercise
 import com.gymlog.app.domain.model.ExerciseHistory
 import com.gymlog.app.domain.model.Set
 import com.gymlog.app.ui.theme.*
+import com.gymlog.app.ui.util.UiMappers
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -61,24 +61,29 @@ fun ExerciseDetailScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = HunterBlack,
         topBar = {
             TopAppBar(
-                title = { Text("DATOS DE MISIÓN", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp)) },
+                title = {
+                    Text(
+                        stringResource(R.string.detail_title),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Volver", tint = Color.White)
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.common_back), tint = HunterTextPrimary)
                     }
                 },
                 actions = {
                     IconButton(onClick = { exercise?.let { onNavigateToEdit(it.id) } }) {
-                        Icon(Icons.Default.Settings, "Editar Ficha", tint = MaterialTheme.colorScheme.onSurface)
+                        Icon(Icons.Default.Settings, stringResource(R.string.detail_cd_edit_file), tint = HunterTextPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = Color.White,
-                    actionIconContentColor = MaterialTheme.colorScheme.primary
+                    containerColor = HunterBlack,
+                    titleContentColor = HunterTextPrimary,
+                    actionIconContentColor = HunterPrimary
                 )
             )
         }
@@ -109,13 +114,14 @@ fun ExerciseDetailScreen(
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 0.5.sp
                             ),
-                            color = Color.White,
+                            color = HunterTextPrimary,
                             modifier = Modifier.padding(horizontal = 8.dp),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            textAlign = TextAlign.Center
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
-                        HunterChip(text = ex.muscleGroup.displayName.uppercase())
+                        // REFACTORIZACIÓN CRÍTICA: Mapeo de Enum
+                        HunterChip(text = stringResource(UiMappers.getDisplayNameRes(ex.muscleGroup)).uppercase())
                     }
                 }
 
@@ -127,18 +133,18 @@ fun ExerciseDetailScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            SectionHeader(title = "CONFIGURACIÓN DE COMBATE")
+                            SectionHeader(title = stringResource(R.string.detail_section_combat_config))
 
                             IconButton(onClick = { onNavigateToEditSet(ex.id, null) }) {
-                                Icon(Icons.Default.AddCircle, "Añadir Set", tint = MaterialTheme.colorScheme.primary)
+                                Icon(Icons.Default.AddCircle, stringResource(R.string.detail_cd_add_set), tint = HunterPrimary)
                             }
                         }
 
                         if (ex.sets.isEmpty()) {
                             Text(
-                                "No hay variantes configuradas.",
+                                stringResource(R.string.detail_no_variants),
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = HunterTextSecondary,
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
                         } else {
@@ -159,12 +165,12 @@ fun ExerciseDetailScreen(
                 // SECCIÓN: NOTAS (Solo lectura/edición rápida)
                 item {
                     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        SectionHeader(title = "NOTAS TÁCTICAS")
+                        SectionHeader(title = stringResource(R.string.detail_section_notes))
 
                         OutlinedTextField(
                             value = notes,
                             onValueChange = viewModel::updateNotes,
-                            placeholder = { Text("Sin observaciones...", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
+                            placeholder = { Text(stringResource(R.string.detail_notes_placeholder), color = HunterTextSecondary.copy(alpha = 0.5f)) },
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 2,
                             maxLines = 4,
@@ -173,7 +179,7 @@ fun ExerciseDetailScreen(
                             trailingIcon = {
                                 if (notes.trim() != ex.notes) {
                                     IconButton(onClick = viewModel::saveNotes) {
-                                        Icon(Icons.Default.Save, "Guardar", tint = MaterialTheme.colorScheme.primary)
+                                        Icon(Icons.Default.Save, stringResource(R.string.common_save), tint = HunterPrimary)
                                     }
                                 }
                             }
@@ -189,11 +195,11 @@ fun ExerciseDetailScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            SectionHeader(title = "REGISTRO DE COMBATE")
+                            SectionHeader(title = stringResource(R.string.detail_section_history))
 
                             if (history.isNotEmpty()) {
                                 TextButton(onClick = viewModel::showDeleteHistoryDialog) {
-                                    Text("BORRAR TODO", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                                    Text(stringResource(R.string.detail_btn_delete_history), color = HunterSecondary, style = MaterialTheme.typography.labelSmall)
                                 }
                             }
                         }
@@ -204,9 +210,9 @@ fun ExerciseDetailScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    "Sin registros previos.",
+                                    stringResource(R.string.detail_no_history),
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                    color = HunterTextSecondary.copy(alpha = 0.5f)
                                 )
                             }
                         }
@@ -223,12 +229,12 @@ fun ExerciseDetailScreen(
         }
     }
 
-    // Diálogos
+    // Diálogos con textos centralizados
     if (showDeleteHistoryDialog) {
         HunterConfirmDialog(
-            title = "BORRAR REGISTRO",
-            text = "Se eliminará todo el historial. Irreversible.",
-            confirmText = "ELIMINAR",
+            title = stringResource(R.string.detail_dialog_delete_history_title),
+            text = stringResource(R.string.detail_dialog_delete_history_text),
+            confirmText = stringResource(R.string.common_delete),
             onConfirm = viewModel::deleteAllHistory,
             onDismiss = viewModel::dismissDeleteHistoryDialog
         )
@@ -236,9 +242,9 @@ fun ExerciseDetailScreen(
 
     showDeleteEntryDialog?.let { entry ->
         HunterConfirmDialog(
-            title = "ELIMINAR ENTRADA",
-            text = "¿Eliminar este registro?",
-            confirmText = "ELIMINAR",
+            title = stringResource(R.string.detail_dialog_delete_entry_title),
+            text = stringResource(R.string.detail_dialog_delete_entry_text),
+            confirmText = stringResource(R.string.common_delete),
             onConfirm = { viewModel.deleteHistoryEntry(entry) },
             onDismiss = viewModel::dismissDeleteEntryDialog
         )
@@ -246,9 +252,9 @@ fun ExerciseDetailScreen(
 
     showDeleteSetDialog?.let { _ ->
         HunterConfirmDialog(
-            title = "ELIMINAR VARIANTE",
-            text = "¿Eliminar este set de la configuración?",
-            confirmText = "ELIMINAR",
+            title = stringResource(R.string.detail_dialog_delete_set_title),
+            text = stringResource(R.string.detail_dialog_delete_set_text),
+            confirmText = stringResource(R.string.common_delete),
             onConfirm = viewModel::deleteSet,
             onDismiss = viewModel::dismissDeleteSetDialog
         )
@@ -267,8 +273,8 @@ fun HunterSetCard(
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+        colors = CardDefaults.cardColors(containerColor = HunterSurface),
+        border = BorderStroke(1.dp, HunterPrimary.copy(alpha = 0.3f)),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
@@ -281,13 +287,13 @@ fun HunterSetCard(
                 Box(
                     modifier = Modifier
                         .size(24.dp)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), CircleShape),
+                        .background(HunterPrimary.copy(alpha = 0.2f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "#$index",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.primary
+                        color = HunterPrimary
                     )
                 }
 
@@ -296,20 +302,20 @@ fun HunterSetCard(
                 // Datos
                 Column {
                     Text(
-                        text = "${set.weightKg} KG",
+                        text = "${set.weightKg} ${stringResource(R.string.common_kg)}",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
-                        color = Color.White
+                        color = HunterTextPrimary
                     )
                     Text(
-                        text = "${set.series} Series × ${set.reps} Reps",
+                        text = "${set.series} ${stringResource(R.string.common_series)} × ${set.reps} ${stringResource(R.string.common_reps)}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = HunterTextSecondary
                     )
                 }
             }
 
             IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, "Borrar", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
+                Icon(Icons.Default.Delete, stringResource(R.string.common_delete), tint = HunterSecondary.copy(alpha = 0.7f))
             }
         }
     }
@@ -324,28 +330,28 @@ fun SectionHeader(title: String) {
         Box(
             modifier = Modifier
                 .size(4.dp, 16.dp)
-                .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp))
+                .background(HunterPrimary, RoundedCornerShape(2.dp))
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = title,
             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = HunterTextSecondary
         )
     }
 }
 
 @Composable
 fun HunterInputColors() = OutlinedTextFieldDefaults.colors(
-    focusedContainerColor = MaterialTheme.colorScheme.background,
-    unfocusedContainerColor = MaterialTheme.colorScheme.background,
-    focusedBorderColor = MaterialTheme.colorScheme.primary,
-    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-    focusedLabelColor = MaterialTheme.colorScheme.primary,
-    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-    cursorColor = MaterialTheme.colorScheme.primary,
-    focusedTextColor = Color.White,
-    unfocusedTextColor = Color.White
+    focusedContainerColor = HunterBlack,
+    unfocusedContainerColor = HunterBlack,
+    focusedBorderColor = HunterPrimary,
+    unfocusedBorderColor = HunterPrimary.copy(alpha = 0.3f), // Reemplazo de color outline hardcodeado
+    focusedLabelColor = HunterPrimary,
+    unfocusedLabelColor = HunterTextSecondary,
+    cursorColor = HunterPrimary,
+    focusedTextColor = HunterTextPrimary,
+    unfocusedTextColor = HunterTextPrimary
 )
 
 @Composable
@@ -355,8 +361,8 @@ fun HunterLargeImageBox(exercise: Exercise) {
             .fillMaxWidth()
             .height(250.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+            .background(HunterSurface)
+            .border(2.dp, HunterPrimary.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
     ) {
         if (exercise.imageUri != null) {
             AsyncImage(
@@ -367,7 +373,8 @@ fun HunterLargeImageBox(exercise: Exercise) {
             )
         } else {
             val iconRes = getGroupIcon(exercise.muscleGroup)
-            val primaryColor = MaterialTheme.colorScheme.primary
+            // Color primario extraído
+            val primaryColor = HunterPrimary
 
             Box(
                 modifier = Modifier
@@ -405,7 +412,7 @@ private fun HistoryLogItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        colors = CardDefaults.cardColors(containerColor = HunterSurface.copy(alpha = 0.5f)),
         shape = RoundedCornerShape(8.dp)
     ) {
         Row(
@@ -419,18 +426,18 @@ private fun HistoryLogItem(
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .background(MaterialTheme.colorScheme.background, RoundedCornerShape(6.dp))
+                        .background(HunterBlack, RoundedCornerShape(6.dp))
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = dateFormat.format(Date(entry.timestamp)).uppercase(),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = HunterTextSecondary
                     )
                     Text(
                         text = timeFormat.format(Date(entry.timestamp)),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        color = HunterTextSecondary.copy(alpha = 0.7f)
                     )
                 }
 
@@ -438,13 +445,13 @@ private fun HistoryLogItem(
 
                 Column {
                     Text(
-                        text = "${entry.weightKg} KG",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                        text = "${entry.weightKg} ${stringResource(R.string.common_kg)}",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, color = HunterPrimary)
                     )
                     Text(
-                        text = "${entry.series} SETS × ${entry.reps} REPS",
+                        text = "${entry.series} ${stringResource(R.string.common_series)} × ${entry.reps} ${stringResource(R.string.common_reps)}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.White
+                        color = HunterTextPrimary
                     )
                 }
             }
@@ -452,8 +459,8 @@ private fun HistoryLogItem(
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.Delete,
-                    "Eliminar",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    stringResource(R.string.common_delete),
+                    tint = HunterTextSecondary.copy(alpha = 0.5f),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -462,46 +469,17 @@ private fun HistoryLogItem(
 }
 
 @Composable
-fun HunterConfirmDialog(
-    title: String,
-    text: String,
-    confirmText: String,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = MaterialTheme.colorScheme.surface,
-        title = { Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.White) },
-        text = { Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text(confirmText, color = Color.White)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("CANCELAR", color = MaterialTheme.colorScheme.onSurface)
-            }
-        }
-    )
-}
-
-@Composable
 private fun HunterChip(text: String) {
     Surface(
         shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+        color = HunterSurface,
+        border = BorderStroke(1.dp, HunterPrimary.copy(alpha = 0.3f))
     ) {
         Text(
             text = text,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.primary
+            color = HunterPrimary
         )
     }
 }

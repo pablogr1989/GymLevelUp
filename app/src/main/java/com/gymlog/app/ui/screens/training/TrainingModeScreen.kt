@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -31,10 +32,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.gymlog.app.R
 import com.gymlog.app.data.local.entity.MuscleGroup
 import com.gymlog.app.domain.model.Exercise
 import com.gymlog.app.domain.model.Set
 import com.gymlog.app.ui.theme.*
+import com.gymlog.app.ui.util.UiMappers
 import com.gymlog.app.util.RequestNotificationPermission
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,9 +58,9 @@ fun TrainingModeScreen(
 
     if (uiState.showExitConfirmation) {
         HunterConfirmDialog(
-            title = "PAUSAR MISIÓN",
-            text = "El entrenamiento está activo. Si sales ahora, perderás el estado actual. ¿Retirarse?",
-            confirmText = "RETIRARSE",
+            title = stringResource(R.string.training_dialog_exit_title),
+            text = stringResource(R.string.training_dialog_exit_text),
+            confirmText = stringResource(R.string.training_dialog_exit_confirm),
             onConfirm = {
                 viewModel.confirmExit()
                 onNavigateBack()
@@ -67,16 +70,16 @@ fun TrainingModeScreen(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = HunterBlack,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        "ZONA DE COMBATE",
+                        stringResource(R.string.training_title),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Black,
                             letterSpacing = 2.sp,
-                            color = if (uiState.isTimerRunning) HunterPurple else Color.White
+                            color = if (uiState.isTimerRunning) ScreenColors.TrainingMode.TimerRunningText else HunterTextPrimary
                         )
                     )
                 },
@@ -84,10 +87,10 @@ fun TrainingModeScreen(
                     IconButton(onClick = {
                         if (uiState.isTrainingActive) viewModel.onBackPressed() else onNavigateBack()
                     }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Volver", tint = Color.White)
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = HunterTextPrimary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = HunterBlack)
             )
         }
     ) { paddingValues ->
@@ -173,14 +176,14 @@ fun TrainingModeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "SISTEMA EN ESPERA...",
+                        text = stringResource(R.string.training_system_waiting),
                         style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        color = HunterTextSecondary.copy(alpha = 0.5f)
                     )
                 }
             } else if (uiState.exercises.isEmpty()) {
                 Text(
-                    text = "NO HAY MISIONES ASIGNADAS",
+                    text = stringResource(R.string.training_no_missions),
                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -191,9 +194,9 @@ fun TrainingModeScreen(
         // Diálogos
         if (showFinishSeriesDialog) {
             HunterConfirmDialog(
-                title = "OBJETIVO CUMPLIDO",
-                text = "Has completado todas las series requeridas. ¿Finalizar ejercicio?",
-                confirmText = "FINALIZAR",
+                title = stringResource(R.string.training_dialog_finish_series_title),
+                text = stringResource(R.string.training_dialog_finish_series_text),
+                confirmText = stringResource(R.string.training_dialog_finish_series_confirm),
                 onConfirm = {
                     viewModel.confirmFinishExercise()
                     showFinishSeriesDialog = false
@@ -204,9 +207,9 @@ fun TrainingModeScreen(
 
         if (showFinishExerciseDialog) {
             HunterConfirmDialog(
-                title = "¿FORZAR FINALIZACIÓN?",
-                text = "Aún quedan series pendientes. ¿Confirmas terminar manualmente?",
-                confirmText = "FORZAR",
+                title = stringResource(R.string.training_dialog_force_finish_title),
+                text = stringResource(R.string.training_dialog_force_finish_text),
+                confirmText = stringResource(R.string.training_dialog_force_finish_confirm),
                 onConfirm = {
                     viewModel.finishExerciseManually()
                     showFinishExerciseDialog = false
@@ -245,15 +248,15 @@ private fun HunterMissionProgress(state: TrainingUiState) {
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("PROGRESO DE MISIÓN", style = MaterialTheme.typography.labelSmall, color = HunterPurple)
-            Text("${(progressFraction * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, color = Color.White)
+            Text(stringResource(R.string.training_progress_label), style = MaterialTheme.typography.labelSmall, color = HunterPurple)
+            Text("${(progressFraction * 100).toInt()}%", style = MaterialTheme.typography.labelSmall, color = HunterTextPrimary)
         }
         Spacer(modifier = Modifier.height(4.dp))
         LinearProgressIndicator(
             progress = { animatedProgress },
             modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(4.dp)),
             color = HunterPurple,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
+            trackColor = ScreenColors.TrainingMode.ProgressTrack
         )
     }
 }
@@ -267,13 +270,13 @@ private fun HunterObjectiveCard(
     HunterCard {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
-                "OBJETIVOS DE MISIÓN",
+                stringResource(R.string.training_section_objectives),
                 style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
                 color = HunterPurple
             )
 
             if (exercises.isEmpty()) {
-                Text("Sin objetivos.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.training_no_objectives), style = MaterialTheme.typography.bodyMedium, color = HunterTextSecondary)
             } else {
                 exercises.forEachIndexed { index, exercise ->
                     val isCurrent = isTrainingActive && index == currentIndex
@@ -296,8 +299,8 @@ private fun HunterObjectiveCard(
                                 .background(
                                     when {
                                         isCurrent -> HunterPurple
-                                        isDone -> HunterCyan // Azul Cian para completado
-                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                        isDone -> HunterCyan
+                                        else -> HunterTextSecondary
                                     },
                                     CircleShape
                                 )
@@ -308,7 +311,7 @@ private fun HunterObjectiveCard(
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = if (isCurrent) FontWeight.Black else FontWeight.Normal
                             ),
-                            color = if (isDone) MaterialTheme.colorScheme.onSurfaceVariant else Color.White,
+                            color = if (isDone) HunterTextSecondary else HunterTextPrimary,
                             modifier = Modifier.weight(1f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -331,18 +334,18 @@ private fun HunterRestConfig(minutes: Int, onMinutesChange: (Int) -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("TIEMPO DE DESCANSO BASE", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.training_rest_config_title), style = MaterialTheme.typography.labelMedium, color = HunterTextSecondary)
 
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledIconButton(
                     onClick = { onMinutesChange(minutes - 1) },
                     enabled = minutes > 1,
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = HunterSurface),
                     modifier = Modifier.size(32.dp)
                 ) { Icon(Icons.Default.Remove, null, modifier = Modifier.size(16.dp)) }
 
                 Text(
-                    text = "$minutes MIN",
+                    text = "$minutes ${stringResource(R.string.training_min_suffix)}",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
                     color = HunterPurple
                 )
@@ -350,7 +353,7 @@ private fun HunterRestConfig(minutes: Int, onMinutesChange: (Int) -> Unit) {
                 FilledIconButton(
                     onClick = { onMinutesChange(minutes + 1) },
                     enabled = minutes < 99,
-                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                    colors = IconButtonDefaults.filledIconButtonColors(containerColor = HunterSurface),
                     modifier = Modifier.size(32.dp)
                 ) { Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp)) }
             }
@@ -362,15 +365,15 @@ private fun HunterRestConfig(minutes: Int, onMinutesChange: (Int) -> Unit) {
 private fun HunterMainButton(isActive: Boolean, onStart: () -> Unit, onEnd: () -> Unit, hasExercises: Boolean) {
     if (hasExercises) {
         HunterButton(
-            text = if (isActive) "FINALIZAR MISIÓN" else "INICIAR MISIÓN",
+            text = if (isActive) stringResource(R.string.training_btn_finish) else stringResource(R.string.training_btn_start),
             onClick = { if (isActive) onEnd() else onStart() },
-            color = if (isActive) HunterPurple else MaterialTheme.colorScheme.primary,
-            textColor = Color.White,
+            color = if (isActive) HunterPurple else HunterPrimary,
+            textColor = HunterTextPrimary,
             icon = {
                 Icon(
                     imageVector = if (isActive) Icons.Default.Flag else Icons.Default.PlayArrow,
                     contentDescription = null,
-                    tint = Color.White
+                    tint = HunterTextPrimary
                 )
             }
         )
@@ -394,9 +397,9 @@ private fun HunterAlarmButton(onStop: () -> Unit) {
             contentAlignment = Alignment.Center
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.NotificationsOff, null, modifier = Modifier.size(28.dp), tint = Color.White)
+                Icon(Icons.Default.NotificationsOff, null, modifier = Modifier.size(28.dp), tint = HunterTextPrimary)
                 Spacer(modifier = Modifier.width(12.dp))
-                Text("DETENER ALARMA", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 2.sp), color = Color.White)
+                Text(stringResource(R.string.training_btn_stop_alarm), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 2.sp), color = HunterTextPrimary)
             }
         }
     }
@@ -430,7 +433,7 @@ private fun HunterActiveExerciseHUD(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = HunterSurface),
         border = BorderStroke(1.dp, HunterPurple.copy(alpha = 0.5f)),
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -442,10 +445,10 @@ private fun HunterActiveExerciseHUD(
                     Text(
                         text = exercise.name.uppercase(),
                         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
-                        color = Color.White
+                        color = HunterTextPrimary
                     )
                     Text(
-                        text = exercise.muscleGroup.displayName.uppercase(),
+                        text = stringResource(UiMappers.getDisplayNameRes(exercise.muscleGroup)).uppercase(),
                         style = MaterialTheme.typography.labelMedium,
                         color = HunterPurple
                     )
@@ -473,12 +476,12 @@ private fun HunterActiveExerciseHUD(
                         Text(
                             text = exercise.name.uppercase(),
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black, lineHeight = 24.sp),
-                            color = Color.White,
+                            color = HunterTextPrimary,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = exercise.muscleGroup.displayName.uppercase(),
+                            text = stringResource(UiMappers.getDisplayNameRes(exercise.muscleGroup)).uppercase(),
                             style = MaterialTheme.typography.labelMedium,
                             color = HunterPurple
                         )
@@ -486,7 +489,7 @@ private fun HunterActiveExerciseHUD(
                 }
             }
 
-            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            Divider(color = HunterPrimary.copy(alpha = 0.2f))
 
             // SETS: Activo
             activeSet?.let { set ->
@@ -500,12 +503,12 @@ private fun HunterActiveExerciseHUD(
             // OTRAS VARIANTES (Si hay más de 1)
             if (allSets.size > 1) {
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                    colors = CardDefaults.cardColors(containerColor = HunterBlack),
+                    border = BorderStroke(1.dp, HunterPrimary.copy(alpha = 0.2f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("OTRAS VARIANTES", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.training_hud_others), style = MaterialTheme.typography.labelSmall, color = HunterTextSecondary)
                         allSets.forEachIndexed { index, set ->
                             if (index != activeSetIndex) {
                                 HunterInactiveSetRow(index + 1, set)
@@ -519,7 +522,7 @@ private fun HunterActiveExerciseHUD(
             OutlinedTextField(
                 value = currentNotes,
                 onValueChange = onNotesChange,
-                label = { Text("NOTAS TÁCTICAS", style = MaterialTheme.typography.labelSmall) },
+                label = { Text(stringResource(R.string.training_hud_notes_label), style = MaterialTheme.typography.labelSmall) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
                 maxLines = 6,
@@ -533,31 +536,31 @@ private fun HunterActiveExerciseHUD(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background, RoundedCornerShape(12.dp))
-                    .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                    .background(HunterBlack, RoundedCornerShape(12.dp))
+                    .border(1.dp, HunterPrimary.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
                     .padding(12.dp)
             ) {
                 Column {
-                    Text("SERIE ACTUAL", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.training_hud_current_series), style = MaterialTheme.typography.labelSmall, color = HunterTextSecondary)
                     Text(
                         text = "$currentSeries / ${activeSet?.series ?: "?"}",
-                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = Color.White)
+                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, color = HunterTextPrimary)
                     )
                 }
 
-                // BOTÓN DE ACCIÓN PRINCIPAL (Morado/Cian)
+                // BOTÓN DE ACCIÓN PRINCIPAL
                 Button(
                     onClick = { if (isSeriesRunning) onStopSeries() else onStartSeries() },
                     colors = ButtonDefaults.buttonColors(
-                        // Si está corriendo (para parar) -> Azul/Morado suave. Si hay que iniciar -> Morado fuerte.
-                        containerColor = if (isSeriesRunning) MaterialTheme.colorScheme.surfaceVariant else HunterPurple
+                        containerColor = if (isSeriesRunning) HunterSurface else HunterPurple
                     ),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        text = if (isSeriesRunning) "TERMINAR SERIE" else "INICIAR SERIE",
+                        text = if (isSeriesRunning) stringResource(R.string.training_hud_btn_end_series)
+                        else stringResource(R.string.training_hud_btn_start_series),
                         fontWeight = FontWeight.Bold,
-                        color = if (isSeriesRunning) Color.White else Color.White
+                        color = HunterTextPrimary
                     )
                 }
             }
@@ -576,11 +579,11 @@ private fun HunterActiveExerciseHUD(
                         onClick = { onRestMinutesChange(restMinutes - 1) },
                         enabled = !isTimerRunning && restMinutes > 1,
                         modifier = Modifier.size(32.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.surface)
+                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = HunterSurface)
                     ) { Text("-", fontWeight = FontWeight.Bold) }
 
                     Text(
-                        "DESC: $restMinutes MIN",
+                        "${stringResource(R.string.training_hud_desc_prefix)} $restMinutes ${stringResource(R.string.training_min_suffix)}",
                         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
                         color = HunterPurple
                     )
@@ -589,7 +592,7 @@ private fun HunterActiveExerciseHUD(
                         onClick = { onRestMinutesChange(restMinutes + 1) },
                         enabled = !isTimerRunning && restMinutes < 99,
                         modifier = Modifier.size(32.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.surface)
+                        colors = IconButtonDefaults.filledIconButtonColors(containerColor = HunterSurface)
                     ) { Text("+", fontWeight = FontWeight.Bold) }
                 }
 
@@ -600,48 +603,48 @@ private fun HunterActiveExerciseHUD(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Controles Timer (Estilo minimalista para no distraer)
+                // Controles Timer
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
                     Button(
                         onClick = { if (isTimerRunning) onPauseTimer() else onResumeTimer() },
                         modifier = Modifier.weight(1f),
                         enabled = timerSeconds > 0 && !isSeriesRunning,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface),
+                        colors = ButtonDefaults.buttonColors(containerColor = HunterSurface),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Icon(if (isTimerRunning) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = Color.White)
+                        Icon(if (isTimerRunning) Icons.Default.Pause else Icons.Default.PlayArrow, null, tint = HunterTextPrimary)
                     }
 
                     Button(
                         onClick = onRestartTimer,
                         modifier = Modifier.weight(1f),
                         enabled = !isSeriesRunning && !isTimerRunning,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface),
+                        colors = ButtonDefaults.buttonColors(containerColor = HunterSurface),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Icon(Icons.Default.Refresh, null, tint = Color.White)
+                        Icon(Icons.Default.Refresh, null, tint = HunterTextPrimary)
                     }
 
                     Button(
                         onClick = onStopTimer,
                         modifier = Modifier.weight(1f),
                         enabled = timerSeconds > 0 && !isSeriesRunning,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surface), // Gris oscuro
+                        colors = ButtonDefaults.buttonColors(containerColor = HunterSurface),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Icon(Icons.Default.Stop, null, tint = HunterSecondary) // Icono rojo para stop
+                        Icon(Icons.Default.Stop, null, tint = ScreenColors.TrainingMode.TimerButtonStop)
                     }
                 }
             }
 
-            // SIGUIENTE OBJETIVO (Morado)
+            // SIGUIENTE OBJETIVO
             Button(
                 onClick = onFinishExercise,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = HunterPurple),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("SIGUIENTE OBJETIVO >>", fontWeight = FontWeight.Black, letterSpacing = 1.sp, color = Color.White)
+                Text(stringResource(R.string.training_hud_btn_next), fontWeight = FontWeight.Black, letterSpacing = 1.sp, color = HunterTextPrimary)
             }
         }
     }
@@ -652,22 +655,22 @@ private fun HunterActiveSetRow(set: Set, currentWeight: Float, onWeightChange: (
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HunterPurple.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
-            .border(1.dp, HunterPurple, RoundedCornerShape(8.dp))
+            .background(ScreenColors.TrainingMode.ActiveSetBg, RoundedCornerShape(8.dp))
+            .border(1.dp, ScreenColors.TrainingMode.ActiveSetBorder, RoundedCornerShape(8.dp))
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text("ACTIVO", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = HunterPurple)
+        Text(stringResource(R.string.training_hud_active_label), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = HunterPurple)
 
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("${set.series}", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.White)
-                Text("SERIES", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${set.series}", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = HunterTextPrimary)
+                Text(stringResource(R.string.common_series), style = MaterialTheme.typography.labelSmall, color = HunterTextSecondary)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("${set.reps}", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.White)
-                Text("REPS", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("${set.reps}", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = HunterTextPrimary)
+                Text(stringResource(R.string.common_reps), style = MaterialTheme.typography.labelSmall, color = HunterTextSecondary)
             }
 
             OutlinedTextField(
@@ -676,7 +679,7 @@ private fun HunterActiveSetRow(set: Set, currentWeight: Float, onWeightChange: (
                     if (str.isEmpty()) onWeightChange(0f)
                     else str.toFloatOrNull()?.let { onWeightChange(it) }
                 },
-                label = { Text("KG", style = MaterialTheme.typography.labelSmall) },
+                label = { Text(stringResource(R.string.common_kg), style = MaterialTheme.typography.labelSmall) },
                 modifier = Modifier.width(100.dp),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, textAlign = TextAlign.Center),
@@ -695,11 +698,11 @@ private fun HunterInactiveSetRow(index: Int, set: Set) {
             .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text("VARIANTE #$index", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.training_hud_variant_fmt, index), style = MaterialTheme.typography.bodyMedium, color = HunterTextSecondary)
         Text(
-            "${set.series} × ${set.reps} @ ${set.weightKg} KG",
+            "${set.series} × ${set.reps} @ ${set.weightKg} ${stringResource(R.string.common_kg)}",
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = HunterTextSecondary
         )
     }
 }
@@ -716,7 +719,7 @@ private fun HunterDigitalClock(seconds: Int, isRunning: Boolean) {
             fontWeight = FontWeight.Black,
             letterSpacing = 4.sp,
         ),
-        color = if (isRunning) HunterPurple else Color.White,
+        color = if (isRunning) ScreenColors.TrainingMode.TimerRunningText else ScreenColors.TrainingMode.TimerStoppedText,
         modifier = Modifier.fillMaxWidth(),
         textAlign = TextAlign.Center
     )
@@ -728,8 +731,8 @@ private fun HunterTrainingExerciseImage(exercise: Exercise) {
         modifier = Modifier
             .size(80.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.background)
-            .border(1.dp, HunterPurple.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+            .background(HunterBlack)
+            .border(1.dp, HunterPrimary.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
     ) {
         val iconRes = getGroupIcon(exercise.muscleGroup)
 
@@ -754,15 +757,15 @@ private fun HunterTrainingExerciseImage(exercise: Exercise) {
 
 @Composable
 fun HunterInputColors() = OutlinedTextFieldDefaults.colors(
-    focusedContainerColor = MaterialTheme.colorScheme.background,
-    unfocusedContainerColor = MaterialTheme.colorScheme.background,
+    focusedContainerColor = HunterBlack,
+    unfocusedContainerColor = HunterBlack,
     focusedBorderColor = HunterPurple,
-    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+    unfocusedBorderColor = HunterPrimary.copy(alpha = 0.3f),
     focusedLabelColor = HunterPurple,
-    unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    unfocusedLabelColor = HunterTextSecondary,
     cursorColor = HunterPurple,
-    focusedTextColor = Color.White,
-    unfocusedTextColor = Color.White
+    focusedTextColor = HunterTextPrimary,
+    unfocusedTextColor = HunterTextPrimary
 )
 
 @DrawableRes

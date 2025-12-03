@@ -11,14 +11,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.gymlog.app.R
 import com.gymlog.app.domain.model.Calendar
-import com.gymlog.app.ui.theme.HunterButton
-import com.gymlog.app.ui.theme.HunterCard
-import com.gymlog.app.ui.theme.HunterConfirmDialog
+import com.gymlog.app.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -33,19 +33,19 @@ fun CalendarsListScreen(
     val showDeleteDialog by viewModel.showDeleteDialog.collectAsState()
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = HunterBlack,
         topBar = {
             TopAppBar(
-                title = { Text("CRONOGRAMAS", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp)) },
+                title = { Text(stringResource(R.string.calendars_title), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp)) },
                 actions = {
                     // Botón pequeño para añadir
                     IconButton(onClick = onNavigateToCreate) {
-                        Icon(Icons.Default.AddCircle, contentDescription = "Crear", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Default.AddCircle, contentDescription = stringResource(R.string.main_cd_new), tint = HunterPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = Color.White
+                    containerColor = HunterBlack,
+                    titleContentColor = HunterTextPrimary
                 )
             )
         }
@@ -65,15 +65,15 @@ fun CalendarsListScreen(
                         imageVector = Icons.Default.DateRange,
                         contentDescription = null,
                         modifier = Modifier.size(80.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        tint = HunterTextSecondary.copy(alpha = 0.5f)
                     )
                     Text(
-                        text = "SIN PLANES ACTIVOS",
+                        text = stringResource(R.string.calendars_empty_state_title),
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = HunterTextSecondary
                     )
                     HunterButton(
-                        text = "INICIAR NUEVO PLAN",
+                        text = stringResource(R.string.calendars_btn_create),
                         onClick = onNavigateToCreate,
                         modifier = Modifier.width(200.dp)
                     )
@@ -100,9 +100,9 @@ fun CalendarsListScreen(
 
     showDeleteDialog?.let { calendar ->
         HunterConfirmDialog(
-            title = "ELIMINAR PLAN",
-            text = "¿Destruir el calendario '${calendar.name}'? Se perderán todos los registros asociados.",
-            confirmText = "ELIMINAR",
+            title = stringResource(R.string.calendars_dialog_delete_title),
+            text = stringResource(R.string.calendars_dialog_delete_text, calendar.name),
+            confirmText = stringResource(R.string.common_delete),
             onConfirm = { viewModel.deleteCalendar(calendar) },
             onDismiss = viewModel::dismissDeleteDialog
         )
@@ -140,7 +140,7 @@ private fun CalendarHunterCard(
                         Icon(
                             imageVector = Icons.Default.EventNote,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = HunterPrimary,
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -150,12 +150,12 @@ private fun CalendarHunterCard(
                     Text(
                         text = calendar.name,
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White
+                        color = HunterTextPrimary
                     )
                     Text(
-                        text = "Creado: ${dateFormat.format(Date(calendar.createdAt))}",
+                        text = stringResource(R.string.calendars_created_prefix, dateFormat.format(Date(calendar.createdAt))),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = HunterTextSecondary
                     )
                 }
             }
@@ -163,8 +163,8 @@ private fun CalendarHunterCard(
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = "Eliminar",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    contentDescription = stringResource(R.string.common_delete),
+                    tint = HunterTextSecondary.copy(alpha = 0.5f)
                 )
             }
         }
