@@ -134,7 +134,7 @@ fun DaySlotDetailScreen(
                     HunterButton(
                         text = stringResource(R.string.day_slot_btn_start),
                         onClick = viewModel::startTraining,
-                        color = if (completed) HunterCyan else HunterPurple,
+                        color = if (completed) HunterCyan else ScreenColors.DaySlotDetail.InitTrainingColorButton,
                         textColor = HunterTextPrimary,
                         icon = {
                             Icon(Icons.Default.PlayArrow, null, tint = HunterTextPrimary)

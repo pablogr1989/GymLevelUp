@@ -91,7 +91,7 @@ fun CalendarDetailScreen(
                         Text(
                             text = stringResource(R.string.calendar_detail_swap_prompt),
                             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                            color = ScreenColors.CalendarDetail.DaySwapSourceBorder // Usando color de swap como acento
+                            color = ScreenColors.CalendarDetail.DaySwapSourceBorder
                         )
                         TextButton(onClick = viewModel::cancelSwap) {
                             Text(stringResource(R.string.common_cancel), fontWeight = FontWeight.Bold, color = HunterTextPrimary)
