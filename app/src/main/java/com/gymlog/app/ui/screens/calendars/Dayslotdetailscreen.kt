@@ -84,7 +84,6 @@ fun DaySlotDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        // REFACTORIZACIÓN CRÍTICA: Uso de UiMapper para el día
                         daySlot?.dayOfWeek?.let { stringResource(UiMappers.getDisplayNameRes(it)).uppercase() }
                             ?: stringResource(R.string.day_slot_default_title),
                         style = MaterialTheme.typography.titleMedium.copy(
@@ -134,7 +133,7 @@ fun DaySlotDetailScreen(
                     HunterButton(
                         text = stringResource(R.string.day_slot_btn_start),
                         onClick = viewModel::startTraining,
-                        color = if (completed) HunterCyan else ScreenColors.DaySlotDetail.InitTrainingColorButton,
+                        color = if (completed) HunterCyan else HunterPurple,
                         textColor = HunterTextPrimary,
                         icon = {
                             Icon(Icons.Default.PlayArrow, null, tint = HunterTextPrimary)
@@ -379,38 +378,42 @@ private fun LoadoutContent(
             )
         }
         else -> {
-            // Botón Añadir (Estilo Slot vacío)
-            OutlinedButton(
-                onClick = onAddExercise,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, HunterPrimary.copy(alpha = 0.5f)),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = HunterPrimary)
-            ) {
-                Icon(Icons.Default.Add, null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.day_slot_btn_equip), fontWeight = FontWeight.Bold)
-            }
+            // FIX: Envuelto en Column para evitar superposición dentro del Box padre
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // 1. Lista de Ejercicios
+                if (exercisesWithSets.isNotEmpty()) {
+                    DraggableLoadoutList(
+                        items = exercisesWithSets,
+                        onExerciseClick = onExerciseClick,
+                        onRemoveExercise = onRemoveExercise,
+                        onMoveExercise = onMoveExercise
+                    )
+                } else {
+                    Text(
+                        stringResource(R.string.day_slot_msg_empty),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = HunterTextSecondary.copy(alpha = 0.5f),
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            if (exercisesWithSets.isNotEmpty()) {
-                DraggableLoadoutList(
-                    items = exercisesWithSets,
-                    onExerciseClick = onExerciseClick,
-                    onRemoveExercise = onRemoveExercise,
-                    onMoveExercise = onMoveExercise
-                )
-            } else {
-                Text(
-                    stringResource(R.string.day_slot_msg_empty),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = HunterTextSecondary.copy(alpha = 0.5f),
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
+                // 2. Botón Añadir (Al final)
+                OutlinedButton(
+                    onClick = onAddExercise,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, HunterPrimary.copy(alpha = 0.5f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = HunterPrimary)
+                ) {
+                    Icon(Icons.Default.Add, null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.day_slot_btn_equip), fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
