@@ -18,10 +18,11 @@ class CalendarRepositoryImpl @Inject constructor(
     private val monthDao: MonthDao,
     private val weekDao: WeekDao,
     private val daySlotDao: DaySlotDao,
-    private val database: GymLogDatabase // Inyectamos la DB para transacciones
+    private val database: GymLogDatabase
 ) : CalendarRepository {
 
-    // Calendar operations
+    // --- Calendar Operations ---
+
     override fun getAllCalendars(): Flow<List<Calendar>> {
         return calendarDao.getAllCalendars().map { entities ->
             entities.map { it.toDomainModel() }
@@ -44,7 +45,8 @@ class CalendarRepositoryImpl @Inject constructor(
         calendarDao.deleteCalendar(calendar.toEntity())
     }
 
-    // Month operations
+    // --- Month Operations ---
+
     override fun getMonthsForCalendar(calendarId: String): Flow<List<Month>> {
         return monthDao.getMonthsForCalendar(calendarId).map { entities ->
             entities.map { it.toDomainModel() }
@@ -67,7 +69,8 @@ class CalendarRepositoryImpl @Inject constructor(
         monthDao.deleteMonth(month.toEntity())
     }
 
-    // Week operations
+    // --- Week Operations ---
+
     override fun getWeeksForMonth(monthId: String): Flow<List<Week>> {
         return weekDao.getWeeksForMonth(monthId).map { entities ->
             entities.map { it.toDomainModel() }
@@ -90,23 +93,35 @@ class CalendarRepositoryImpl @Inject constructor(
         weekDao.deleteWeek(week.toEntity())
     }
 
-    // DaySlot operations
+    // --- DaySlot Operations (CLEANED UP) ---
+
     override fun getDaysForWeek(weekId: String): Flow<List<DaySlot>> {
         return daySlotDao.getDaysForWeek(weekId).map { entities ->
-            entities.map { it.toDomainModel() }
+            entities.map { entity ->
+                val crossRefs = daySlotDao.getExercisesForDaySync(entity.id)
+                entity.toDomainModel(crossRefs)
+            }
         }
     }
 
     override suspend fun getDayById(dayId: String): DaySlot? {
-        return daySlotDao.getDayById(dayId)?.toDomainModel()
+        val entity = daySlotDao.getDayById(dayId) ?: return null
+        val crossRefs = daySlotDao.getExercisesForDaySync(dayId)
+        return entity.toDomainModel(crossRefs)
     }
 
     override suspend fun insertDaySlot(daySlot: DaySlot) {
-        daySlotDao.insertDaySlot(daySlot.toEntity())
+        database.withTransaction {
+            daySlotDao.insertDaySlot(daySlot.toEntity())
+            saveDaySlotExercises(daySlot.id, daySlot.exercises)
+        }
     }
 
     override suspend fun updateDaySlot(daySlot: DaySlot) {
-        daySlotDao.updateDaySlot(daySlot.toEntity())
+        database.withTransaction {
+            daySlotDao.updateDaySlot(daySlot.toEntity())
+            saveDaySlotExercises(daySlot.id, daySlot.exercises)
+        }
     }
 
     override suspend fun deleteDaySlot(daySlot: DaySlot) {
@@ -129,37 +144,50 @@ class CalendarRepositoryImpl @Inject constructor(
         daySlotDao.clearExerciseReferences(exerciseId)
     }
 
-    // IMPLEMENTACIÓN DE SWAP (Esta es la parte que faltaba o estaba mal)
     override suspend fun swapDaySlots(daySlotId1: String, daySlotId2: String) {
         database.withTransaction {
             val day1 = daySlotDao.getDayById(daySlotId1)
             val day2 = daySlotDao.getDayById(daySlotId2)
 
             if (day1 != null && day2 != null) {
-                // Intercambiamos solo el contenido (categorías, ejercicios, completado),
-                // manteniendo IDs, weekId y dayOfWeek originales.
+                // 1. Obtener referencias
+                val refs1 = daySlotDao.getExercisesForDaySync(daySlotId1)
+                val refs2 = daySlotDao.getExercisesForDaySync(daySlotId2)
+
+                // 2. Intercambiar datos básicos
                 val updatedDay1 = day1.copy(
                     categoryList = day2.categoryList,
-                    selectedExerciseIds = day2.selectedExerciseIds,
                     completed = day2.completed
                 )
-
                 val updatedDay2 = day2.copy(
                     categoryList = day1.categoryList,
-                    selectedExerciseIds = day1.selectedExerciseIds,
                     completed = day1.completed
                 )
 
                 daySlotDao.updateDaySlot(updatedDay1)
                 daySlotDao.updateDaySlot(updatedDay2)
+
+                // 3. Intercambiar referencias
+                daySlotDao.clearExercisesForDay(daySlotId1)
+                daySlotDao.clearExercisesForDay(daySlotId2)
+
+                refs2.forEach { ref ->
+                    daySlotDao.insertDaySlotCrossRef(ref.copy(daySlotId = daySlotId1))
+                }
+                refs1.forEach { ref ->
+                    daySlotDao.insertDaySlotCrossRef(ref.copy(daySlotId = daySlotId2))
+                }
             }
         }
     }
 
-    // Composite operations
+    // --- Composite Operations ---
+
     override suspend fun getCalendarWithMonths(calendarId: String): CalendarWithMonths? {
         val calendar = calendarDao.getCalendarById(calendarId)?.toDomainModel() ?: return null
         val months = monthDao.getMonthsForCalendar(calendarId).first()
+
+        val allCrossRefs = daySlotDao.getAllCrossRefs().groupBy { it.daySlotId }
 
         val monthsWithWeeks = months.map { monthEntity ->
             val month = monthEntity.toDomainModel()
@@ -167,10 +195,12 @@ class CalendarRepositoryImpl @Inject constructor(
 
             val weeksWithDays = weeks.map { weekEntity ->
                 val week = weekEntity.toDomainModel()
-                val days = daySlotDao.getDaysForWeek(week.id).first().map { it.toDomainModel() }
+                val days = daySlotDao.getDaysForWeek(week.id).first().map { entity ->
+                    val refs = allCrossRefs[entity.id] ?: emptyList()
+                    entity.toDomainModel(refs)
+                }
                 WeekWithDays(week, days)
             }
-
             MonthWithWeeks(month, weeksWithDays)
         }
 
@@ -179,23 +209,7 @@ class CalendarRepositoryImpl @Inject constructor(
 
     override fun getCalendarWithMonthsFlow(calendarId: String): Flow<CalendarWithMonths?> {
         return daySlotDao.getDaysForCalendar(calendarId).map { _ ->
-            val calendar = calendarDao.getCalendarById(calendarId)?.toDomainModel() ?: return@map null
-            val months = monthDao.getMonthsForCalendar(calendarId).first()
-
-            val monthsWithWeeks = months.map { monthEntity ->
-                val month = monthEntity.toDomainModel()
-                val weeks = weekDao.getWeeksForMonth(month.id).first()
-
-                val weeksWithDays = weeks.map { weekEntity ->
-                    val week = weekEntity.toDomainModel()
-                    val days = daySlotDao.getDaysForWeek(week.id).first().map { it.toDomainModel() }
-                    WeekWithDays(week, days)
-                }
-
-                MonthWithWeeks(month, weeksWithDays)
-            }
-
-            CalendarWithMonths(calendar, monthsWithWeeks)
+            getCalendarWithMonths(calendarId)
         }
     }
 
@@ -205,20 +219,42 @@ class CalendarRepositoryImpl @Inject constructor(
 
         val weeksWithDays = weeks.map { weekEntity ->
             val week = weekEntity.toDomainModel()
-            val days = daySlotDao.getDaysForWeek(week.id).first().map { it.toDomainModel() }
+            val days = daySlotDao.getDaysForWeek(week.id).first().map { entity ->
+                val refs = daySlotDao.getExercisesForDaySync(entity.id)
+                entity.toDomainModel(refs)
+            }
             WeekWithDays(week, days)
         }
-
         return MonthWithWeeks(month, weeksWithDays)
     }
 
     override suspend fun getWeekWithDays(weekId: String): WeekWithDays? {
         val week = weekDao.getWeekById(weekId)?.toDomainModel() ?: return null
-        val days = daySlotDao.getDaysForWeek(weekId).first().map { it.toDomainModel() }
+        val days = daySlotDao.getDaysForWeek(weekId).first().map { entity ->
+            val refs = daySlotDao.getExercisesForDaySync(entity.id)
+            entity.toDomainModel(refs)
+        }
         return WeekWithDays(week, days)
     }
 
-    // Mapper functions
+    // --- Helpers ---
+
+    private suspend fun saveDaySlotExercises(daySlotId: String, assignments: List<TrainingAssignment>) {
+        daySlotDao.clearExercisesForDay(daySlotId)
+        assignments.forEachIndexed { index, assignment ->
+            daySlotDao.insertDaySlotCrossRef(
+                DaySlotExerciseCrossRef(
+                    daySlotId = daySlotId,
+                    exerciseId = assignment.exerciseId,
+                    targetSetId = assignment.targetSetId,
+                    orderIndex = index
+                )
+            )
+        }
+    }
+
+    // --- Mappers ---
+
     private fun CalendarEntity.toDomainModel() = Calendar(id, name, createdAt)
     private fun Calendar.toEntity() = CalendarEntity(id, name, createdAt)
 
@@ -228,21 +264,27 @@ class CalendarRepositoryImpl @Inject constructor(
     private fun WeekEntity.toDomainModel() = Week(id, monthId, weekNumber)
     private fun Week.toEntity() = WeekEntity(id, monthId, weekNumber)
 
-    private fun DaySlotEntity.toDomainModel() = DaySlot(
-        id = id,
-        weekId = weekId,
-        dayOfWeek = dayOfWeek,
-        categories = parseCategoryList(categoryList),
-        selectedExerciseIds = parseExerciseIdList(selectedExerciseIds),
-        completed = completed
-    )
+    private fun DaySlotEntity.toDomainModel(crossRefs: List<DaySlotExerciseCrossRef> = emptyList()): DaySlot {
+        // Mapeo limpio: Entidad -> Modelo de Dominio
+        val assignments = crossRefs
+            .sortedBy { it.orderIndex }
+            .map { TrainingAssignment(it.exerciseId, it.targetSetId) }
+
+        return DaySlot(
+            id = id,
+            weekId = weekId,
+            dayOfWeek = dayOfWeek,
+            categories = parseCategoryList(categoryList),
+            exercises = assignments, // Ahora pasamos objetos puros
+            completed = completed
+        )
+    }
 
     private fun DaySlot.toEntity() = DaySlotEntity(
         id = id,
         weekId = weekId,
         dayOfWeek = dayOfWeek,
         categoryList = serializeCategoryList(categories),
-        selectedExerciseIds = serializeExerciseIdList(selectedExerciseIds),
         completed = completed
     )
 
@@ -255,14 +297,5 @@ class CalendarRepositoryImpl @Inject constructor(
 
     private fun serializeCategoryList(categories: List<DayCategory>): String {
         return categories.joinToString(",") { it.name }
-    }
-
-    private fun parseExerciseIdList(exerciseIds: String): List<String> {
-        if (exerciseIds.isEmpty()) return emptyList()
-        return exerciseIds.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-    }
-
-    private fun serializeExerciseIdList(exerciseIds: List<String>): String {
-        return exerciseIds.joinToString(",")
     }
 }

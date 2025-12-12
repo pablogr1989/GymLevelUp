@@ -27,7 +27,7 @@ data class DaySlotEntity(
     val weekId: String,
     val dayOfWeek: DayOfWeek,
     val categoryList: String = "",  // comma-separated
-    val selectedExerciseIds: String = "",  // comma-separated
+    // ELIMINADO: selectedExerciseIds (Ahora vive en DaySlotExerciseCrossRef)
     val completed: Boolean = false
 )
 
@@ -47,6 +47,7 @@ enum class DayOfWeek(val displayName: String, val dayNumber: Int) {
         }
     }
 }
+
 @Serializable
 enum class DayCategory(val displayName: String, val abbreviation: String) {
     FULL_BODY("Full Body", "FB"),

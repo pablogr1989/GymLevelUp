@@ -14,9 +14,10 @@ import com.gymlog.app.data.local.entity.*
         MonthEntity::class,
         WeekEntity::class,
         DaySlotEntity::class,
-        SetEntity::class // Nueva entidad
+        SetEntity::class,
+        DaySlotExerciseCrossRef::class // NUEVA ENTIDAD REGISTRADA
     ],
-    version = 2,
+    version = 3, // AUMENTAMOS VERSIÓN (Era 2)
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -28,4 +29,5 @@ abstract class GymLogDatabase : RoomDatabase() {
     abstract fun weekDao(): WeekDao
     abstract fun daySlotDao(): DaySlotDao
     abstract fun setDao(): SetDao
+    // No necesitamos un DAO específico para la CrossRef si lo gestionamos a través de DaySlotDao
 }

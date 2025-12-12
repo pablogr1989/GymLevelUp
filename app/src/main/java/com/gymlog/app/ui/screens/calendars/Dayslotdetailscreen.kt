@@ -36,6 +36,7 @@ import com.gymlog.app.R
 import com.gymlog.app.data.local.entity.DayCategory
 import com.gymlog.app.domain.model.Exercise
 import com.gymlog.app.domain.model.Set as GymSet
+import com.gymlog.app.domain.model.TrainingAssignment // IMPORTANTE: Nuevo modelo
 import com.gymlog.app.ui.theme.*
 import com.gymlog.app.ui.util.UiMappers
 
@@ -166,7 +167,7 @@ fun DaySlotDetailScreen(
                         isCardioOrRest = selectedCategories.all { it == DayCategory.CARDIO || it == DayCategory.REST },
                         onAddExercise = { showBottomSheet = true },
                         onExerciseClick = onNavigateToExercise,
-                        onRemoveExercise = viewModel::removeExercise,
+                        onRemoveExercise = viewModel::removeExercise, // Ahora pasa TrainingAssignment
                         onMoveExercise = viewModel::moveExercise
                     )
                 }
@@ -336,7 +337,6 @@ private fun CategorySelectorGrid(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
-                                // REFACTORIZACIÓN: Uso de UiMapper
                                 text = stringResource(UiMappers.getDisplayNameRes(category)).uppercase(),
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                 color = if (isSelected) HunterPrimary else HunterTextSecondary
@@ -359,7 +359,7 @@ private fun LoadoutContent(
     isCardioOrRest: Boolean,
     onAddExercise: () -> Unit,
     onExerciseClick: (String) -> Unit,
-    onRemoveExercise: (String) -> Unit,
+    onRemoveExercise: (TrainingAssignment) -> Unit, // UPDATED: Usa TrainingAssignment
     onMoveExercise: (Int, Int) -> Unit
 ) {
     when {
@@ -378,7 +378,6 @@ private fun LoadoutContent(
             )
         }
         else -> {
-            // FIX: Envuelto en Column para evitar superposición dentro del Box padre
             Column(modifier = Modifier.fillMaxWidth()) {
                 // 1. Lista de Ejercicios
                 if (exercisesWithSets.isNotEmpty()) {
@@ -423,7 +422,7 @@ private fun LoadoutContent(
 private fun DraggableLoadoutList(
     items: List<ExerciseWithSelectedSet>,
     onExerciseClick: (String) -> Unit,
-    onRemoveExercise: (String) -> Unit,
+    onRemoveExercise: (TrainingAssignment) -> Unit, // UPDATED
     onMoveExercise: (Int, Int) -> Unit
 ) {
     var draggedIndex by remember { mutableStateOf<Int?>(null) }
@@ -442,7 +441,7 @@ private fun DraggableLoadoutList(
                 isDragged = draggedIndex == index,
                 isDraggedOver = targetIndex == index,
                 onClick = { onExerciseClick(item.exercise.id) },
-                onRemove = { onRemoveExercise(item.compositeId) },
+                onRemove = { onRemoveExercise(item.assignment) }, // Pasamos el assignment limpio
                 onDragStart = { positionY ->
                     draggedIndex = index
                     targetIndex = index
@@ -538,7 +537,7 @@ private fun HunterDraggableCard(
                 tint = HunterTextSecondary,
                 modifier = Modifier
                     .size(24.dp)
-                    .pointerInput(item.compositeId) {
+                    .pointerInput(item.assignment) { // Clave estable: el objeto Assignment
                         detectDragGesturesAfterLongPress(
                             onDragStart = {
                                 onDragStart(cardPositionY)

@@ -6,11 +6,12 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class BackupData(
-    val exercises: List<ExerciseEntity>,
-    val sets: List<SetEntity>,
-    val history: List<ExerciseHistoryEntity>,
-    val calendars: List<CalendarEntity>,
-    val months: List<MonthEntity>,
-    val weeks: List<WeekEntity>,
-    val daySlots: List<DaySlotEntity>
+    val exercises: List<ExerciseEntity> = emptyList(),
+    val sets: List<SetEntity> = emptyList(),
+    val history: List<ExerciseHistoryEntity> = emptyList(),
+    val calendars: List<CalendarEntity> = emptyList(),
+    val months: List<MonthEntity> = emptyList(),
+    val weeks: List<WeekEntity> = emptyList(),
+    val daySlots: List<DaySlotEntity> = emptyList(),
+    val daySlotExercises: List<DaySlotExerciseCrossRef> = emptyList()
 )

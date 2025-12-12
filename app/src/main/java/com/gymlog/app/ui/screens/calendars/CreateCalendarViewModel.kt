@@ -1,13 +1,12 @@
 package com.gymlog.app.ui.screens.calendars
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gymlog.app.data.local.entity.DayOfWeek
 import com.gymlog.app.domain.model.Calendar
+import com.gymlog.app.domain.model.DaySlot
 import com.gymlog.app.domain.model.Month
 import com.gymlog.app.domain.model.Week
-import com.gymlog.app.domain.model.DaySlot
-import com.gymlog.app.data.local.entity.DayOfWeek
 import com.gymlog.app.domain.repository.CalendarRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -100,7 +99,8 @@ class CreateCalendarViewModel @Inject constructor(
                             weekId = weekId,
                             dayOfWeek = dayOfWeek,
                             categories = emptyList(),
-                            selectedExerciseIds = emptyList(),
+                            // CORREGIDO: Usamos 'exercises' en lugar de 'selectedExerciseIds'
+                            exercises = emptyList(),
                             completed = false
                         )
                         repository.insertDaySlot(daySlot)

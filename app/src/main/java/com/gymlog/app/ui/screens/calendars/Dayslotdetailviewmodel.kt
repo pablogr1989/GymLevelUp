@@ -7,6 +7,7 @@ import com.gymlog.app.data.local.entity.DayCategory
 import com.gymlog.app.data.local.entity.MuscleGroup
 import com.gymlog.app.domain.model.DaySlot
 import com.gymlog.app.domain.model.Exercise
+import com.gymlog.app.domain.model.TrainingAssignment
 import com.gymlog.app.domain.repository.CalendarRepository
 import com.gymlog.app.domain.repository.ExerciseRepository
 import com.gymlog.app.domain.model.Set as GymSet
@@ -15,17 +16,17 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// Modelo para la UI
+// Modelo UI auxiliar
 data class ExerciseWithSelectedSet(
     val exercise: Exercise,
-    val selectedSet: GymSet?, // Usamos el alias
-    val compositeId: String
+    val selectedSet: GymSet?,
+    val assignment: TrainingAssignment // Objeto puro para referencias
 )
 
 data class DaySlotUiState(
     val daySlot: DaySlot? = null,
-    val selectedCategories: Set<DayCategory> = emptySet(), // Colección estándar
-    val selectedExerciseIds: List<String> = emptyList(),
+    val selectedCategories: Set<DayCategory> = emptySet(),
+    val currentAssignments: List<TrainingAssignment> = emptyList(), // LISTA TIPADA
     val completed: Boolean = false,
     val isLoading: Boolean = false,
     val isCategoriesExpanded: Boolean = true,
@@ -44,14 +45,14 @@ class DaySlotDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(DaySlotUiState())
     val uiState = _uiState.asStateFlow()
 
-    // --- Legacy StateFlows ---
+    // --- StateFlows (Compatibilidad UI) ---
     val daySlot = _uiState.map { it.daySlot }.stateIn(viewModelScope, SharingStarted.Lazily, null)
     val selectedCategories = _uiState.map { it.selectedCategories }.stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
     val completed = _uiState.map { it.completed }.stateIn(viewModelScope, SharingStarted.Lazily, false)
     val isLoading = _uiState.map { it.isLoading }.stateIn(viewModelScope, SharingStarted.Lazily, false)
     val isCategoriesExpanded = _uiState.map { it.isCategoriesExpanded }.stateIn(viewModelScope, SharingStarted.Lazily, true)
     val isExercisesExpanded = _uiState.map { it.isExercisesExpanded }.stateIn(viewModelScope, SharingStarted.Lazily, true)
-    // -------------------------
+    // --------------------------------------
 
     private val _navigateBack = MutableStateFlow(false)
     val navigateBack = _navigateBack.asStateFlow()
@@ -69,21 +70,19 @@ class DaySlotDetailViewModel @Inject constructor(
 
     val selectedExercisesWithSets: StateFlow<List<ExerciseWithSelectedSet>> = combine(
         allExercises,
-        _uiState.map { it.selectedExerciseIds }
-    ) { exercises, compositeIds ->
+        _uiState.map { it.currentAssignments }
+    ) { exercises, assignments ->
         val exerciseMap = exercises.associateBy { it.id }
 
-        compositeIds.mapNotNull { compositeId ->
-            val parts = compositeId.split("|")
-            val exId = parts[0]
-            val setId = parts.getOrNull(1)
-
-            val exercise = exerciseMap[exId]
-
+        assignments.mapNotNull { assignment ->
+            val exercise = exerciseMap[assignment.exerciseId]
             if (exercise != null) {
-                // Usamos GymSet (alias)
-                val set = if (setId != null) exercise.sets.find { it.id == setId } else exercise.sets.firstOrNull()
-                ExerciseWithSelectedSet(exercise, set, compositeId)
+                val set = if (assignment.targetSetId != null) {
+                    exercise.sets.find { it.id == assignment.targetSetId } ?: exercise.sets.firstOrNull()
+                } else {
+                    exercise.sets.firstOrNull()
+                }
+                ExerciseWithSelectedSet(exercise, set, assignment)
             } else {
                 null
             }
@@ -94,10 +93,7 @@ class DaySlotDetailViewModel @Inject constructor(
         initialValue = emptyList()
     )
 
-    val selectedExercises: StateFlow<List<Exercise>> = selectedExercisesWithSets.map { list ->
-        list.map { it.exercise }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-
+    // Lista filtrada de ejercicios para el selector (bottom sheet)
     val filteredExercises: StateFlow<List<Exercise>> = combine(
         allExercises,
         _uiState.map { it.selectedCategories }
@@ -107,11 +103,9 @@ class DaySlotDetailViewModel @Inject constructor(
         } else {
             if (categories.contains(DayCategory.FULL_BODY)) {
                 exercises
-            }
-            else if (categories.all { it == DayCategory.CARDIO || it == DayCategory.REST }) {
+            } else if (categories.all { it == DayCategory.CARDIO || it == DayCategory.REST }) {
                 emptyList()
-            }
-            else {
+            } else {
                 exercises.filter { exercise ->
                     val muscleGroups = categories.mapNotNull { category ->
                         categoryToMuscleGroup(category)
@@ -137,7 +131,7 @@ class DaySlotDetailViewModel @Inject constructor(
                 _uiState.update { it.copy(
                     daySlot = daySlot,
                     selectedCategories = daySlot.categories.toSet(),
-                    selectedExerciseIds = daySlot.selectedExerciseIds,
+                    currentAssignments = daySlot.exercises, // Carga directa, sin splits
                     completed = daySlot.completed
                 )}
             }
@@ -148,57 +142,59 @@ class DaySlotDetailViewModel @Inject constructor(
     fun toggleCategory(category: DayCategory) {
         _uiState.update { state ->
             val current = state.selectedCategories
-            val newCategories = if (current.contains(category)) {
-                current - category
-            } else {
-                current + category
-            }
+            val newCategories = if (current.contains(category)) current - category else current + category
 
-            // Limpieza de ejercicios
-            val currentExercises = state.selectedExerciseIds
-            var newExercises = currentExercises
+            // Limpieza inteligente de ejercicios incompatibles
+            var newAssignments = state.currentAssignments
 
-            if (currentExercises.isNotEmpty()) {
+            if (newAssignments.isNotEmpty()) {
                 if (newCategories.all { it == DayCategory.CARDIO || it == DayCategory.REST }) {
-                    newExercises = emptyList()
+                    newAssignments = emptyList()
                 } else {
                     val compatibleExercises = if (newCategories.contains(DayCategory.FULL_BODY)) {
                         allExercises.value
                     } else {
                         allExercises.value.filter { exercise ->
-                            val muscleGroups = newCategories.mapNotNull { cat ->
-                                categoryToMuscleGroup(cat)
-                            }
+                            val muscleGroups = newCategories.mapNotNull { cat -> categoryToMuscleGroup(cat) }
                             exercise.muscleGroup in muscleGroups
                         }
                     }
-                    newExercises = currentExercises.filter { compositeId ->
-                        val exId = compositeId.split("|")[0]
-                        compatibleExercises.any { it.id == exId }
+                    newAssignments = newAssignments.filter { assignment ->
+                        compatibleExercises.any { it.id == assignment.exerciseId }
                     }
                 }
             }
 
             state.copy(
                 selectedCategories = newCategories,
-                selectedExerciseIds = newExercises
+                currentAssignments = newAssignments
             )
         }
     }
 
     fun addExercise(exerciseId: String, setId: String) {
-        val compositeId = "$exerciseId|$setId"
+        val newAssignment = TrainingAssignment(exerciseId, setId)
         _uiState.update { state ->
-            val current = state.selectedExerciseIds
-            if (!current.contains(compositeId)) {
-                state.copy(selectedExerciseIds = current + compositeId)
+            // Evitar duplicados exactos si se desea, o permitir (aquí permitimos pero verificamos si ya existe exacto)
+            val current = state.currentAssignments
+            if (!current.contains(newAssignment)) {
+                state.copy(currentAssignments = current + newAssignment)
             } else state
         }
     }
 
-    fun removeExercise(compositeId: String) {
+    fun removeExercise(assignment: TrainingAssignment) {
         _uiState.update { state ->
-            state.copy(selectedExerciseIds = state.selectedExerciseIds - compositeId)
+            state.copy(currentAssignments = state.currentAssignments - assignment)
+        }
+    }
+
+    fun moveExercise(fromIndex: Int, toIndex: Int) {
+        val currentList = _uiState.value.currentAssignments.toMutableList()
+        if (fromIndex in currentList.indices && toIndex in currentList.indices) {
+            val item = currentList.removeAt(fromIndex)
+            currentList.add(toIndex, item)
+            _uiState.update { it.copy(currentAssignments = currentList) }
         }
     }
 
@@ -215,7 +211,7 @@ class DaySlotDetailViewModel @Inject constructor(
 
             val updatedDaySlot = currentDaySlot.copy(
                 categories = state.selectedCategories.toList(),
-                selectedExerciseIds = state.selectedExerciseIds,
+                exercises = state.currentAssignments, // Guardado directo
                 completed = state.completed
             )
 
@@ -237,16 +233,6 @@ class DaySlotDetailViewModel @Inject constructor(
 
     fun toggleExercisesExpansion() {
         _uiState.update { it.copy(isExercisesExpanded = !it.isExercisesExpanded) }
-    }
-
-    fun moveExercise(fromIndex: Int, toIndex: Int) {
-        val currentList = _uiState.value.selectedExerciseIds.toMutableList()
-
-        if (fromIndex in currentList.indices && toIndex in currentList.indices) {
-            val item = currentList.removeAt(fromIndex)
-            currentList.add(toIndex, item)
-            _uiState.update { it.copy(selectedExerciseIds = currentList) }
-        }
     }
 
     fun startTraining() {

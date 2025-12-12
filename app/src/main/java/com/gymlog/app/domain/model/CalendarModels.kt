@@ -22,12 +22,19 @@ data class Week(
     val weekNumber: Int
 )
 
+// NUEVO MODELO PARA LA ASIGNACIÓN
+data class TrainingAssignment(
+    val exerciseId: String,
+    val targetSetId: String? = null // Nullable: puede ser el ejercicio base sin set específico
+)
+
 data class DaySlot(
     val id: String,
     val weekId: String,
     val dayOfWeek: DayOfWeek,
     val categories: List<DayCategory> = emptyList(),
-    val selectedExerciseIds: List<String> = emptyList(),
+    // CAMBIO CRÍTICO: Usamos objetos tipados, no strings
+    val exercises: List<TrainingAssignment> = emptyList(),
     val completed: Boolean = false
 )
 
