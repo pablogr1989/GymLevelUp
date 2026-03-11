@@ -26,8 +26,12 @@ fun EditSetScreen(
     viewModel: EditSetViewModel = hiltViewModel()
 ) {
     val series by viewModel.series.collectAsState()
-    val reps by viewModel.reps.collectAsState()
+    val minReps by viewModel.minReps.collectAsState()
+    val maxReps by viewModel.maxReps.collectAsState()
     val weight by viewModel.weight.collectAsState()
+    val minRir by viewModel.minRir.collectAsState()
+    val maxRir by viewModel.maxRir.collectAsState()
+
     val isLoading by viewModel.isLoading.collectAsState()
     val navigateBack by viewModel.navigateBack.collectAsState()
     val showExitConfirmation by viewModel.showExitConfirmation.collectAsState()
@@ -89,12 +93,23 @@ fun EditSetScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
 
-                    HunterInput(
-                        value = reps,
-                        onValueChange = viewModel::updateReps,
-                        label = stringResource(R.string.set_label_reps),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        HunterInput(
+                            value = minReps,
+                            onValueChange = viewModel::updateMinReps,
+                            label = "Min Reps",
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+
+                        HunterInput(
+                            value = maxReps,
+                            onValueChange = viewModel::updateMaxReps,
+                            label = "Max Reps",
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                    }
 
                     HunterInput(
                         value = weight,
@@ -102,6 +117,24 @@ fun EditSetScreen(
                         label = stringResource(R.string.common_weight_kg),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                     )
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        HunterInput(
+                            value = minRir,
+                            onValueChange = viewModel::updateMinRir,
+                            label = "Min RIR",
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+
+                        HunterInput(
+                            value = maxRir,
+                            onValueChange = viewModel::updateMaxRir,
+                            label = "Max RIR",
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                    }
                 }
             }
 
@@ -123,7 +156,7 @@ fun EditSetScreen(
         HunterConfirmDialog(
             title = stringResource(R.string.set_dialog_discard_title),
             text = stringResource(R.string.set_dialog_discard_text),
-            confirmText = stringResource(R.string.exercise_dialog_discard_confirm), // Reutilizamos "SALIR"
+            confirmText = stringResource(R.string.exercise_dialog_discard_confirm),
             onConfirm = viewModel::confirmExit,
             onDismiss = viewModel::dismissExitConfirmation
         )

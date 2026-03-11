@@ -18,9 +18,18 @@ data class Exercise(
     val currentSeries: Int
         get() = sets.firstOrNull()?.series ?: 0
 
-    val currentReps: Int
-        get() = sets.firstOrNull()?.reps ?: 0
+    val currentMinReps: Int
+        get() = sets.firstOrNull()?.minReps ?: 0
+
+    val currentMaxReps: Int
+        get() = sets.firstOrNull()?.maxReps ?: 0
 
     val currentWeightKg: Float
         get() = sets.firstOrNull()?.weightKg ?: 0f
+
+    val currentMinRir: Int?
+        get() = sets.firstOrNull()?.minRir
+
+    val currentMaxRir: Int?
+        get() = sets.firstOrNull()?.maxRir
 }

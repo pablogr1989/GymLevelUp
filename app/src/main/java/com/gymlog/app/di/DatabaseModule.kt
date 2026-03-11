@@ -37,6 +37,7 @@ object DatabaseModule {
             GymLogDatabase::class.java,
             "gymlevelup_database_v2"
         )
+            .addMigrations(GymLogDatabase.MIGRATION_3_4, GymLogDatabase.MIGRATION_4_5) // Añadida migración 4->5
             .fallbackToDestructiveMigration()
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
@@ -46,7 +47,9 @@ object DatabaseModule {
                             context,
                             GymLogDatabase::class.java,
                             "gymlevelup_database_v2"
-                        ).build()
+                        )
+                            .addMigrations(GymLogDatabase.MIGRATION_3_4, GymLogDatabase.MIGRATION_4_5) // Añadida migración 4->5
+                            .build()
                         prepopulateDatabase(database, context)
                     }
                 }
@@ -86,70 +89,69 @@ object DatabaseModule {
         val exerciseDao = database.exerciseDao()
         val setDao = database.setDao()
 
-        // Helper data class para prepoblación usando Recursos
+        // Añadimos minRir y maxRir al SampleData
         data class SampleData(
             val id: String,
             @StringRes val nameRes: Int,
             val group: MuscleGroup,
             @StringRes val descRes: Int,
             val series: Int,
-            val reps: Int,
-            val weight: Float
+            val minReps: Int,
+            val maxReps: Int,
+            val weight: Float,
+            val minRir: Int? = null,
+            val maxRir: Int? = null
         )
 
-        // Nota: Asegúrate de tener estos strings en strings.xml o usa strings temporales si prefieres.
-        // He usado R.string.app_name como placeholder seguro si alguno falta,
-        // pero lo ideal es definir R.string.sample_ex_squat, etc.
         val samples = listOf(
             SampleData(
                 "ex_sentadilla_barra",
-                R.string.app_name, // Placeholder: Debería ser R.string.sample_squat_name
+                R.string.app_name,
                 MuscleGroup.LEGS,
-                R.string.app_name, // Placeholder: Debería ser R.string.sample_squat_desc
-                3, 10, 60f
+                R.string.app_name,
+                3, 10, 10, 60f, 1, 2 // Ejemplo con RIR 1-2
             ),
             SampleData(
                 "ex_press_banca",
-                R.string.app_name, // Placeholder
+                R.string.app_name,
                 MuscleGroup.CHEST,
-                R.string.app_name, // Placeholder
-                4, 10, 40f
+                R.string.app_name,
+                4, 10, 10, 40f, 2, 2 // Ejemplo con RIR 2
             ),
             SampleData(
                 "ex_jalon_polea",
-                R.string.app_name, // Placeholder
+                R.string.app_name,
                 MuscleGroup.BACK,
-                R.string.app_name, // Placeholder
-                3, 12, 50f
+                R.string.app_name,
+                3, 12, 12, 50f, null, null // Ejemplo sin RIR
             )
         )
 
         database.withTransaction {
             samples.forEach { sample ->
-                // Resolvemos el string usando el contexto
-                // Si aún no has creado los strings específicos en strings.xml,
-                // puedes cambiar 'context.getString(sample.nameRes)' por un string literal temporalmente.
                 val nameResolved = context.getString(sample.nameRes)
                 val descResolved = context.getString(sample.descRes)
 
                 exerciseDao.insertExercise(
                     ExerciseEntity(
                         id = sample.id,
-                        name = if (nameResolved == "GymLevelUp") "Sentadilla (Ejemplo)" else nameResolved, // Fallback logic simple
+                        name = if (nameResolved == "GymLevelUp") "Sentadilla (Ejemplo)" else nameResolved,
                         description = descResolved,
                         muscleGroup = sample.group,
                         createdAt = System.currentTimeMillis()
                     )
                 )
 
-                // Crear Set inicial
                 setDao.insertSet(
                     SetEntity(
                         id = UUID.randomUUID().toString(),
                         exerciseId = sample.id,
                         series = sample.series,
-                        reps = sample.reps,
-                        weightKg = sample.weight
+                        minReps = sample.minReps,
+                        maxReps = sample.maxReps,
+                        weightKg = sample.weight,
+                        minRir = sample.minRir,
+                        maxRir = sample.maxRir
                     )
                 )
             }

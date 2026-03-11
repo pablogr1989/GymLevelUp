@@ -34,24 +34,19 @@ data class TrainingUiState(
     val selectedSetIds: List<String?> = emptyList(),
     val isTrainingActive: Boolean = false,
 
-    // Índices
     val currentExerciseIndex: Int = 0,
     val activeSetIndex: Int = 0,
 
-    // Estado del set activo
     val currentSeries: Int = 1,
     val currentWeight: Float = 0f,
     val currentNotes: String = "",
 
-    // Timer (Datos provenientes del Manager)
     val timerSeconds: Int = 0,
     val isTimerRunning: Boolean = false,
     val isAlarmRinging: Boolean = false,
 
-    // Configuración local
     val restMinutes: Int = 2,
 
-    // UI Flags
     val isSeriesButtonEnabled: Boolean = false,
     val isSeriesRunning: Boolean = false,
     val showExitConfirmation: Boolean = false
@@ -62,14 +57,13 @@ class TrainingModeViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val calendarRepository: CalendarRepository,
     private val exerciseRepository: ExerciseRepository,
-    private val timerManager: TimerManager // INYECTADO
+    private val timerManager: TimerManager
 ) : ViewModel() {
 
     private val daySlotId: String = checkNotNull(savedStateHandle["daySlotId"])
 
     private val _localUiState = MutableStateFlow(TrainingUiState())
 
-    // Fusionamos el estado local con el estado del TimerManager
     val uiState: StateFlow<TrainingUiState> = kotlinx.coroutines.flow.combine(
         _localUiState,
         timerManager.timerState
@@ -78,7 +72,6 @@ class TrainingModeViewModel @Inject constructor(
             timerSeconds = timer.remainingSeconds,
             isTimerRunning = timer.isRunning,
             isAlarmRinging = timer.isAlarmRinging,
-            // Si el timer termina (suena alarma), habilitamos botones para la siguiente serie
             isSeriesButtonEnabled = local.isSeriesButtonEnabled || timer.isAlarmRinging
         )
     }.stateIn(
@@ -86,21 +79,6 @@ class TrainingModeViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = TrainingUiState()
     )
-
-    // --- Legacy StateFlows ---
-    val daySlot = uiState.map { it.daySlot }.stateIn(viewModelScope, SharingStarted.Lazily, null)
-    val exercises = uiState.map { it.exercises }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
-    val isTrainingActive = uiState.map { it.isTrainingActive }.stateIn(viewModelScope, SharingStarted.Lazily, false)
-    val currentExerciseIndex = uiState.map { it.currentExerciseIndex }.stateIn(viewModelScope, SharingStarted.Lazily, 0)
-    val currentSeries = uiState.map { it.currentSeries }.stateIn(viewModelScope, SharingStarted.Lazily, 1)
-    val currentWeight = uiState.map { it.currentWeight }.stateIn(viewModelScope, SharingStarted.Lazily, 0f)
-    val currentNotes = uiState.map { it.currentNotes }.stateIn(viewModelScope, SharingStarted.Lazily, "")
-    val timerSeconds = uiState.map { it.timerSeconds }.stateIn(viewModelScope, SharingStarted.Lazily, 0)
-    val isTimerRunning = uiState.map { it.isTimerRunning }.stateIn(viewModelScope, SharingStarted.Lazily, false)
-    val restMinutes = uiState.map { it.restMinutes }.stateIn(viewModelScope, SharingStarted.Lazily, 2)
-    val isSeriesButtonEnabled = uiState.map { it.isSeriesButtonEnabled }.stateIn(viewModelScope, SharingStarted.Lazily, false)
-    val isSeriesRunning = uiState.map { it.isSeriesRunning }.stateIn(viewModelScope, SharingStarted.Lazily, false)
-    // -------------------------
 
     init {
         loadDaySlotAndExercises()
@@ -218,14 +196,11 @@ class TrainingModeViewModel @Inject constructor(
         _localUiState.update { it.copy(restMinutes = coerced) }
     }
 
-    // ============ FUNCIONES DE SERIES ============
-
     fun startSeries() {
         _localUiState.update { it.copy(
             isSeriesRunning = true,
             isSeriesButtonEnabled = true
         )}
-        // Aseguramos que el timer esté limpio al empezar una serie (estamos trabajando)
         timerManager.stopTimer(resetState = true)
     }
 
@@ -241,7 +216,6 @@ class TrainingModeViewModel @Inject constructor(
                 isSeriesButtonEnabled = false,
                 isSeriesRunning = false
             )}
-            // Iniciamos el descanso con el TimerManager
             restartTimer()
             SeriesAction.CONTINUE
         } else {
@@ -280,8 +254,6 @@ class TrainingModeViewModel @Inject constructor(
         }
     }
 
-    // ============ FUNCIONES DE TIMER (DELEGADAS) ============
-
     fun pauseTimer() {
         timerManager.pauseTimer()
     }
@@ -303,8 +275,6 @@ class TrainingModeViewModel @Inject constructor(
     fun stopAlarm() {
         timerManager.stopAlarm()
     }
-
-    // ============ GUARDAR CAMBIOS ============
 
     private suspend fun saveCurrentExerciseChanges() {
         val state = _localUiState.value
@@ -333,7 +303,7 @@ class TrainingModeViewModel @Inject constructor(
                 setId = activeSet.id,
                 timestamp = System.currentTimeMillis(),
                 series = activeSet.series,
-                reps = activeSet.reps,
+                reps = activeSet.minReps, // Usamos el minReps para rellenar el historial
                 weightKg = state.currentWeight
             )
         )
@@ -356,8 +326,5 @@ class TrainingModeViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        // No detenemos el TimerManager aquí porque es Singleton y podría querer seguir sonando
-        // aunque cerremos esta pantalla específica, pero si esa es la intención:
-        // timerManager.stopTimer()
     }
 }

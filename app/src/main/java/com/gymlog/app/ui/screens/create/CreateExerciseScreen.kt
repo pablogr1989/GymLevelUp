@@ -43,8 +43,12 @@ fun CreateExerciseScreen(
     val selectedMuscleGroup by viewModel.selectedMuscleGroup.collectAsState()
     val imageUri by viewModel.imageUri.collectAsState()
     val series by viewModel.series.collectAsState()
-    val reps by viewModel.reps.collectAsState()
+    val minReps by viewModel.minReps.collectAsState()
+    val maxReps by viewModel.maxReps.collectAsState()
     val weight by viewModel.weight.collectAsState()
+    val minRir by viewModel.minRir.collectAsState()
+    val maxRir by viewModel.maxRir.collectAsState()
+
     val showMuscleGroupError by viewModel.showMuscleGroupError.collectAsState()
     val showNameError by viewModel.showNameError.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -98,7 +102,6 @@ fun CreateExerciseScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // 1. SLOT DE IMAGEN
             HunterCard(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -116,43 +119,26 @@ fun CreateExerciseScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
-
-                        // Overlay para cambiar
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(ScreenColors.CreateExercise.ImageOverlay),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = null,
-                                tint = HunterTextPrimary,
-                                modifier = Modifier.size(32.dp)
-                            )
+                            Icon(Icons.Default.Edit, null, tint = HunterTextPrimary, modifier = Modifier.size(32.dp))
                         }
                     } else {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.AddPhotoAlternate,
-                                contentDescription = null,
-                                modifier = Modifier.size(48.dp),
-                                tint = ScreenColors.CreateExercise.IconTint
-                            )
-                            Text(
-                                text = stringResource(R.string.exercise_add_visual),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = HunterPrimary
-                            )
+                            Icon(Icons.Default.AddPhotoAlternate, null, modifier = Modifier.size(48.dp), tint = ScreenColors.CreateExercise.IconTint)
+                            Text(stringResource(R.string.exercise_add_visual), style = MaterialTheme.typography.labelMedium, color = HunterPrimary)
                         }
                     }
                 }
             }
 
-            // 2. DATOS BÁSICOS
             HunterCard {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -175,7 +161,6 @@ fun CreateExerciseScreen(
                         label = stringResource(R.string.exercise_desc_label)
                     )
 
-                    // Selector de Grupo
                     OutlinedCard(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -201,7 +186,6 @@ fun CreateExerciseScreen(
                 }
             }
 
-            // 3. VALORES INICIALES (Opcional)
             HunterCard {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -217,22 +201,45 @@ fun CreateExerciseScreen(
                             modifier = Modifier.weight(1f),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
-
                         HunterInput(
-                            value = reps,
-                            onValueChange = viewModel::updateReps,
-                            label = stringResource(R.string.common_reps),
+                            value = minReps,
+                            onValueChange = viewModel::updateMinReps,
+                            label = "Min Reps",
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                        HunterInput(
+                            value = maxReps,
+                            onValueChange = viewModel::updateMaxReps,
+                            label = "Max Reps",
                             modifier = Modifier.weight(1f),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                         )
                     }
 
-                    HunterInput(
-                        value = weight,
-                        onValueChange = viewModel::updateWeight,
-                        label = stringResource(R.string.common_weight_kg),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        HunterInput(
+                            value = weight,
+                            onValueChange = viewModel::updateWeight,
+                            label = stringResource(R.string.common_weight_kg),
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                        )
+                        HunterInput(
+                            value = minRir,
+                            onValueChange = viewModel::updateMinRir,
+                            label = "Min RIR",
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                        HunterInput(
+                            value = maxRir,
+                            onValueChange = viewModel::updateMaxRir,
+                            label = "Max RIR",
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+                    }
                 }
             }
 

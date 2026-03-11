@@ -55,7 +55,6 @@ fun ExerciseDetailScreen(
     val showDeleteEntryDialog by viewModel.showDeleteEntryDialog.collectAsState()
     val showDeleteSetDialog by viewModel.showDeleteSetDialog.collectAsState()
 
-    // Recargar al volver de editar un set
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.loadExercise()
     }
@@ -120,12 +119,11 @@ fun ExerciseDetailScreen(
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
-                        // REFACTORIZACIÓN CRÍTICA: Mapeo de Enum
                         HunterChip(text = stringResource(UiMappers.getDisplayNameRes(ex.muscleGroup)).uppercase())
                     }
                 }
 
-                // SECCIÓN: SETS PLANIFICADOS (Nueva)
+                // SECCIÓN: SETS PLANIFICADOS
                 item {
                     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                         Row(
@@ -133,7 +131,7 @@ fun ExerciseDetailScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            SectionHeader(title = stringResource(R.string.detail_section_combat_config))
+                            SectionHeader(title = "Configuración de Series")
 
                             IconButton(onClick = { onNavigateToEditSet(ex.id, null) }) {
                                 Icon(Icons.Default.AddCircle, stringResource(R.string.detail_cd_add_set), tint = HunterPrimary)
@@ -162,7 +160,7 @@ fun ExerciseDetailScreen(
                     }
                 }
 
-                // SECCIÓN: NOTAS (Solo lectura/edición rápida)
+                // SECCIÓN: NOTAS
                 item {
                     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                         SectionHeader(title = stringResource(R.string.detail_section_notes))
@@ -229,7 +227,6 @@ fun ExerciseDetailScreen(
         }
     }
 
-    // Diálogos con textos centralizados
     if (showDeleteHistoryDialog) {
         HunterConfirmDialog(
             title = stringResource(R.string.detail_dialog_delete_history_title),
@@ -283,7 +280,6 @@ fun HunterSetCard(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Badge de número
                 Box(
                     modifier = Modifier
                         .size(24.dp)
@@ -299,15 +295,25 @@ fun HunterSetCard(
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                // Datos
                 Column {
                     Text(
                         text = "${set.weightKg} ${stringResource(R.string.common_kg)}",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
                         color = HunterTextPrimary
                     )
+
+                    val repsText = if (set.minReps == set.maxReps) {
+                        "${set.minReps}"
+                    } else {
+                        "${set.minReps}-${set.maxReps}"
+                    }
+
+                    val rirText = if (set.minRir != null && set.maxRir != null) {
+                        if (set.minRir == set.maxRir) " | RIR ${set.minRir}" else " | RIR ${set.minRir}-${set.maxRir}"
+                    } else ""
+
                     Text(
-                        text = "${set.series} ${stringResource(R.string.common_series)} × ${set.reps} ${stringResource(R.string.common_reps)}",
+                        text = "${set.series} ${stringResource(R.string.common_series)} × $repsText ${stringResource(R.string.common_reps)}$rirText",
                         style = MaterialTheme.typography.bodyMedium,
                         color = HunterTextSecondary
                     )
@@ -346,7 +352,7 @@ fun HunterInputColors() = OutlinedTextFieldDefaults.colors(
     focusedContainerColor = HunterBlack,
     unfocusedContainerColor = HunterBlack,
     focusedBorderColor = HunterPrimary,
-    unfocusedBorderColor = HunterPrimary.copy(alpha = 0.3f), // Reemplazo de color outline hardcodeado
+    unfocusedBorderColor = HunterPrimary.copy(alpha = 0.3f),
     focusedLabelColor = HunterPrimary,
     unfocusedLabelColor = HunterTextSecondary,
     cursorColor = HunterPrimary,
@@ -373,7 +379,6 @@ fun HunterLargeImageBox(exercise: Exercise) {
             )
         } else {
             val iconRes = getGroupIcon(exercise.muscleGroup)
-            // Color primario extraído
             val primaryColor = HunterPrimary
 
             Box(

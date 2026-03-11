@@ -25,6 +25,9 @@ data class SetEntity(
     val id: String,
     val exerciseId: String,
     val series: Int,
-    val reps: Int,
-    val weightKg: Float
+    val minReps: Int,
+    val maxReps: Int,
+    val weightKg: Float,
+    val minRir: Int? = null,
+    val maxRir: Int? = null
 )

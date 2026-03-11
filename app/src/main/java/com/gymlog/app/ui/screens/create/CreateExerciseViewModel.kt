@@ -21,7 +21,7 @@ import javax.inject.Inject
 @HiltViewModel
 class CreateExerciseViewModel @Inject constructor(
     private val repository: ExerciseRepository,
-    private val imageStorageHelper: ImageStorageHelper // Inyección añadida
+    private val imageStorageHelper: ImageStorageHelper
 ) : ViewModel() {
 
     private val _name = MutableStateFlow("")
@@ -39,11 +39,21 @@ class CreateExerciseViewModel @Inject constructor(
     private val _series = MutableStateFlow("")
     val series = _series.asStateFlow()
 
-    private val _reps = MutableStateFlow("")
-    val reps = _reps.asStateFlow()
+    private val _minReps = MutableStateFlow("")
+    val minReps = _minReps.asStateFlow()
+
+    private val _maxReps = MutableStateFlow("")
+    val maxReps = _maxReps.asStateFlow()
 
     private val _weight = MutableStateFlow("")
     val weight = _weight.asStateFlow()
+
+    // NUEVO: RIR
+    private val _minRir = MutableStateFlow("")
+    val minRir = _minRir.asStateFlow()
+
+    private val _maxRir = MutableStateFlow("")
+    val maxRir = _maxRir.asStateFlow()
 
     private val _showMuscleGroupError = MutableStateFlow(false)
     val showMuscleGroupError = _showMuscleGroupError.asStateFlow()
@@ -76,25 +86,31 @@ class CreateExerciseViewModel @Inject constructor(
     }
 
     fun updateSeries(value: String) {
-        if (value.validateInt()) {
-            _series.value = value
-        }
+        if (value.validateInt()) _series.value = value
     }
 
-    fun updateReps(value: String) {
-        if (value.validateInt()) {
-            _reps.value = value
-        }
+    fun updateMinReps(value: String) {
+        if (value.validateInt()) _minReps.value = value
+    }
+
+    fun updateMaxReps(value: String) {
+        if (value.validateInt()) _maxReps.value = value
     }
 
     fun updateWeight(value: String) {
-        if (value.validateFloat()) {
-            _weight.value = value
-        }
+        if (value.validateFloat()) _weight.value = value
+    }
+
+    // NUEVO: Actualizar RIR
+    fun updateMinRir(value: String) {
+        if (value.validateInt() || value.isEmpty()) _minRir.value = value
+    }
+
+    fun updateMaxRir(value: String) {
+        if (value.validateInt() || value.isEmpty()) _maxRir.value = value
     }
 
     fun saveExercise() {
-        // Validate fields
         if (_name.value.trim().isEmpty()) {
             _showNameError.value = true
             return
@@ -108,46 +124,47 @@ class CreateExerciseViewModel @Inject constructor(
         viewModelScope.launch {
             _isLoading.value = true
 
-            // LÓGICA DE IMAGEN CORREGIDA:
-            // Guardar la imagen en almacenamiento interno si existe
             val savedImagePath = _imageUri.value?.let { uri ->
                 imageStorageHelper.saveImageToInternalStorage(uri)
             }
 
             val exerciseId = UUID.randomUUID().toString()
             val seriesValue = _series.value.toIntOrNull() ?: 0
-            val repsValue = _reps.value.toIntOrNull() ?: 0
+            val minRepsValue = _minReps.value.toIntOrNull() ?: 0
+            val maxRepsValue = _maxReps.value.toIntOrNull() ?: 0
             val weightValue = _weight.value.toFloatOrNull() ?: 0f
+            val minRirValue = _minRir.value.toIntOrNull()
+            val maxRirValue = _maxRir.value.toIntOrNull()
 
-            // Creamos el set inicial si hay datos
-            val initialSets = if (seriesValue > 0 || repsValue > 0 || weightValue > 0f) {
+            val initialSets = if (seriesValue > 0 || minRepsValue > 0 || maxRepsValue > 0 || weightValue > 0f) {
                 listOf(
                     Set(
                         id = UUID.randomUUID().toString(),
                         exerciseId = exerciseId,
                         series = seriesValue,
-                        reps = repsValue,
-                        weightKg = weightValue
+                        minReps = minRepsValue,
+                        maxReps = maxRepsValue,
+                        weightKg = weightValue,
+                        minRir = minRirValue,
+                        maxRir = maxRirValue
                     )
                 )
             } else {
                 emptyList()
             }
 
-            // Creamos el ejercicio
             val exercise = Exercise(
                 id = exerciseId,
                 name = _name.value.trim(),
                 description = _description.value.trim(),
                 muscleGroup = _selectedMuscleGroup.value!!,
-                imageUri = savedImagePath, // Usamos la ruta persistente
+                imageUri = savedImagePath,
                 sets = initialSets,
                 createdAt = System.currentTimeMillis()
             )
 
             repository.insertExercise(exercise)
 
-            // Add initial history entry if stats were provided
             if (initialSets.isNotEmpty()) {
                 val firstSet = initialSets.first()
                 repository.insertHistory(
@@ -157,7 +174,7 @@ class CreateExerciseViewModel @Inject constructor(
                         setId = firstSet.id,
                         timestamp = System.currentTimeMillis(),
                         series = firstSet.series,
-                        reps = firstSet.reps,
+                        reps = firstSet.minReps,
                         weightKg = firstSet.weightKg
                     )
                 )

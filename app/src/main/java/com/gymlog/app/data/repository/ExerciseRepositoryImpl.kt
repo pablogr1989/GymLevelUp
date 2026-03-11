@@ -12,7 +12,6 @@ import com.gymlog.app.domain.model.ExerciseHistory
 import com.gymlog.app.domain.model.Set
 import com.gymlog.app.domain.repository.ExerciseRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import java.util.UUID
 import javax.inject.Inject
@@ -77,15 +76,18 @@ class ExerciseRepositoryImpl @Inject constructor(
         val sets = setDao.getSetsForExerciseSync(exerciseId)
         if (sets.isNotEmpty()) {
             val firstSet = sets.first()
-            setDao.updateSet(firstSet.copy(series = series, reps = reps, weightKg = weight))
+            setDao.updateSet(firstSet.copy(series = series, minReps = reps, maxReps = reps, weightKg = weight))
         } else {
             setDao.insertSet(
                 SetEntity(
                     id = UUID.randomUUID().toString(),
                     exerciseId = exerciseId,
                     series = series,
-                    reps = reps,
-                    weightKg = weight
+                    minReps = reps,
+                    maxReps = reps,
+                    weightKg = weight,
+                    minRir = null,
+                    maxRir = null
                 )
             )
         }
@@ -131,7 +133,6 @@ class ExerciseRepositoryImpl @Inject constructor(
         }
     }
 
-    // Sets operations
     override suspend fun getSetById(setId: String): Set? {
         return setDao.getSetById(setId)?.toDomainModel()
     }
@@ -148,7 +149,7 @@ class ExerciseRepositoryImpl @Inject constructor(
         setDao.deleteSetById(setId)
     }
 
-    // Mappers
+    // Mappers actualizados con los nuevos campos minRir y maxRir
     private fun ExerciseEntity.toDomainModel(sets: List<Set>): Exercise {
         return Exercise(
             id = id,
@@ -176,8 +177,8 @@ class ExerciseRepositoryImpl @Inject constructor(
         )
     }
 
-    private fun SetEntity.toDomainModel() = Set(id, exerciseId, series, reps, weightKg)
-    private fun Set.toEntity() = SetEntity(id, exerciseId, series, reps, weightKg)
+    private fun SetEntity.toDomainModel() = Set(id, exerciseId, series, minReps, maxReps, weightKg, minRir, maxRir)
+    private fun Set.toEntity() = SetEntity(id, exerciseId, series, minReps, maxReps, weightKg, minRir, maxRir)
 
     private fun ExerciseHistoryEntity.toDomainModel() = ExerciseHistory(id, exerciseId, setId, timestamp, series, reps, weightKg)
     private fun ExerciseHistory.toEntity() = ExerciseHistoryEntity(id, exerciseId, setId, timestamp, series, reps, weightKg)

@@ -6,6 +6,9 @@ data class Set(
     val id: String = UUID.randomUUID().toString(),
     val exerciseId: String,
     val series: Int,
-    val reps: Int,
-    val weightKg: Float
+    val minReps: Int,
+    val maxReps: Int,
+    val weightKg: Float,
+    val minRir: Int? = null, // NUEVO: RIR Mínimo opcional
+    val maxRir: Int? = null  // NUEVO: RIR Máximo opcional
 )

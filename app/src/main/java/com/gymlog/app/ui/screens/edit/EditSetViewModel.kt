@@ -26,11 +26,20 @@ class EditSetViewModel @Inject constructor(
     private val _series = MutableStateFlow("")
     val series = _series.asStateFlow()
 
-    private val _reps = MutableStateFlow("")
-    val reps = _reps.asStateFlow()
+    private val _minReps = MutableStateFlow("")
+    val minReps = _minReps.asStateFlow()
+
+    private val _maxReps = MutableStateFlow("")
+    val maxReps = _maxReps.asStateFlow()
 
     private val _weight = MutableStateFlow("")
     val weight = _weight.asStateFlow()
+
+    private val _minRir = MutableStateFlow("")
+    val minRir = _minRir.asStateFlow()
+
+    private val _maxRir = MutableStateFlow("")
+    val maxRir = _maxRir.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
@@ -42,8 +51,11 @@ class EditSetViewModel @Inject constructor(
     val showExitConfirmation = _showExitConfirmation.asStateFlow()
 
     private var initialSeries = ""
-    private var initialReps = ""
+    private var initialMinReps = ""
+    private var initialMaxReps = ""
     private var initialWeight = ""
+    private var initialMinRir = ""
+    private var initialMaxRir = ""
 
     init {
         if (setId != null) {
@@ -56,13 +68,18 @@ class EditSetViewModel @Inject constructor(
             _isLoading.value = true
             repository.getSetById(id)?.let { set ->
                 _series.value = set.series.toString()
-                _reps.value = set.reps.toString()
+                _minReps.value = set.minReps.toString()
+                _maxReps.value = set.maxReps.toString()
                 _weight.value = set.weightKg.toString()
+                _minRir.value = set.minRir?.toString() ?: ""
+                _maxRir.value = set.maxRir?.toString() ?: ""
 
-                // Guardar estado inicial para detectar cambios
                 initialSeries = _series.value
-                initialReps = _reps.value
+                initialMinReps = _minReps.value
+                initialMaxReps = _maxReps.value
                 initialWeight = _weight.value
+                initialMinRir = _minRir.value
+                initialMaxRir = _maxRir.value
             }
             _isLoading.value = false
         }
@@ -72,20 +89,35 @@ class EditSetViewModel @Inject constructor(
         if (value.validateInt()) _series.value = value
     }
 
-    fun updateReps(value: String) {
-        if (value.validateInt()) _reps.value = value
+    fun updateMinReps(value: String) {
+        if (value.validateInt()) _minReps.value = value
+    }
+
+    fun updateMaxReps(value: String) {
+        if (value.validateInt()) _maxReps.value = value
     }
 
     fun updateWeight(value: String) {
         if (value.validateFloat()) _weight.value = value
     }
 
+    fun updateMinRir(value: String) {
+        if (value.validateInt() || value.isEmpty()) _minRir.value = value
+    }
+
+    fun updateMaxRir(value: String) {
+        if (value.validateInt() || value.isEmpty()) _maxRir.value = value
+    }
+
     fun saveSet() {
         val seriesVal = _series.value.toIntOrNull() ?: 0
-        val repsVal = _reps.value.toIntOrNull() ?: 0
+        val minRepsVal = _minReps.value.toIntOrNull() ?: 0
+        val maxRepsVal = _maxReps.value.toIntOrNull() ?: 0
         val weightVal = _weight.value.toFloatOrNull() ?: 0f
+        val minRirVal = _minRir.value.toIntOrNull()
+        val maxRirVal = _maxRir.value.toIntOrNull()
 
-        if (seriesVal == 0 && repsVal == 0) return // Validación mínima
+        if (seriesVal == 0 && minRepsVal == 0 && maxRepsVal == 0) return
 
         viewModelScope.launch {
             _isLoading.value = true
@@ -93,8 +125,11 @@ class EditSetViewModel @Inject constructor(
                 id = setId ?: UUID.randomUUID().toString(),
                 exerciseId = exerciseId,
                 series = seriesVal,
-                reps = repsVal,
-                weightKg = weightVal
+                minReps = minRepsVal,
+                maxReps = maxRepsVal,
+                weightKg = weightVal,
+                minRir = minRirVal,
+                maxRir = maxRirVal
             )
 
             if (setId != null) {
@@ -131,7 +166,10 @@ class EditSetViewModel @Inject constructor(
 
     private fun hasChanges(): Boolean {
         return _series.value != initialSeries ||
-                _reps.value != initialReps ||
-                _weight.value != initialWeight
+                _minReps.value != initialMinReps ||
+                _maxReps.value != initialMaxReps ||
+                _weight.value != initialWeight ||
+                _minRir.value != initialMinRir ||
+                _maxRir.value != initialMaxRir
     }
 }

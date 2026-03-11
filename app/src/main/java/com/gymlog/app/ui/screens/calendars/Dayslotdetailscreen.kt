@@ -36,7 +36,7 @@ import com.gymlog.app.R
 import com.gymlog.app.data.local.entity.DayCategory
 import com.gymlog.app.domain.model.Exercise
 import com.gymlog.app.domain.model.Set as GymSet
-import com.gymlog.app.domain.model.TrainingAssignment // IMPORTANTE: Nuevo modelo
+import com.gymlog.app.domain.model.TrainingAssignment
 import com.gymlog.app.ui.theme.*
 import com.gymlog.app.ui.util.UiMappers
 
@@ -61,9 +61,7 @@ fun DaySlotDetailScreen(
 
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    val bottomSheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true
-    )
+    val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     LaunchedEffect(navigateBack) {
         if (navigateBack) {
@@ -123,13 +121,11 @@ fun DaySlotDetailScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // 1. ESTADO DE LA MISIÓN
-                HunterMissionStatus(
+                DaySlotStatus(
                     completed = completed,
                     onToggle = viewModel::toggleCompleted
                 )
 
-                // 2. BOTÓN DE ACCIÓN (INICIAR)
                 if (selectedExercisesWithSets.isNotEmpty()) {
                     HunterButton(
                         text = stringResource(R.string.day_slot_btn_start),
@@ -142,9 +138,8 @@ fun DaySlotDetailScreen(
                     )
                 }
 
-                // 3. CLASE DE COMBATE (CATEGORÍAS)
                 HunterExpandableSection(
-                    title = stringResource(R.string.day_slot_section_class),
+                    title = "Categoría del día", // Texto limpio
                     isExpanded = isCategoriesExpanded,
                     onToggle = viewModel::toggleCategoriesExpansion
                 ) {
@@ -154,9 +149,8 @@ fun DaySlotDetailScreen(
                     )
                 }
 
-                // 4. LOADOUT (EJERCICIOS)
                 HunterExpandableSection(
-                    title = stringResource(R.string.day_slot_section_loadout),
+                    title = "Ejercicios", // Texto limpio
                     isExpanded = isExercisesExpanded,
                     onToggle = viewModel::toggleExercisesExpansion,
                     badgeCount = selectedExercisesWithSets.size
@@ -167,12 +161,11 @@ fun DaySlotDetailScreen(
                         isCardioOrRest = selectedCategories.all { it == DayCategory.CARDIO || it == DayCategory.REST },
                         onAddExercise = { showBottomSheet = true },
                         onExerciseClick = onNavigateToExercise,
-                        onRemoveExercise = viewModel::removeExercise, // Ahora pasa TrainingAssignment
+                        onRemoveExercise = viewModel::removeExercise,
                         onMoveExercise = viewModel::moveExercise
                     )
                 }
 
-                // 5. GUARDAR
                 HunterButton(
                     text = stringResource(R.string.day_slot_btn_confirm),
                     onClick = viewModel::saveDaySlot,
@@ -205,10 +198,8 @@ fun DaySlotDetailScreen(
     }
 }
 
-// ============ COMPONENTES HUNTER ============
-
 @Composable
-private fun HunterMissionStatus(
+private fun DaySlotStatus(
     completed: Boolean,
     onToggle: () -> Unit
 ) {
@@ -225,7 +216,7 @@ private fun HunterMissionStatus(
         ) {
             Column {
                 Text(
-                    text = stringResource(R.string.day_slot_mission_status),
+                    text = "Estado",
                     style = MaterialTheme.typography.labelSmall,
                     color = HunterTextSecondary
                 )
@@ -237,7 +228,6 @@ private fun HunterMissionStatus(
                 )
             }
 
-            // Switch estilo Hunter
             Box(
                 modifier = Modifier
                     .size(width = 60.dp, height = 32.dp)
@@ -273,7 +263,6 @@ private fun HunterExpandableSection(
             .clip(RoundedCornerShape(16.dp))
             .background(HunterSurface)
     ) {
-        // Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -301,7 +290,6 @@ private fun HunterExpandableSection(
             )
         }
 
-        // Content
         if (isExpanded) {
             Box(modifier = Modifier.padding(16.dp)) {
                 content()
@@ -325,7 +313,6 @@ private fun CategorySelectorGrid(
                 rowCategories.forEach { category ->
                     val isSelected = selectedCategories.contains(category)
 
-                    // Chip personalizado
                     Surface(
                         modifier = Modifier
                             .weight(1f)
@@ -359,13 +346,13 @@ private fun LoadoutContent(
     isCardioOrRest: Boolean,
     onAddExercise: () -> Unit,
     onExerciseClick: (String) -> Unit,
-    onRemoveExercise: (TrainingAssignment) -> Unit, // UPDATED: Usa TrainingAssignment
+    onRemoveExercise: (TrainingAssignment) -> Unit,
     onMoveExercise: (Int, Int) -> Unit
 ) {
     when {
         !hasCategories -> {
             Text(
-                stringResource(R.string.day_slot_warn_no_class),
+                "Añade una categoría primero.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = HunterTextSecondary
             )
@@ -379,7 +366,6 @@ private fun LoadoutContent(
         }
         else -> {
             Column(modifier = Modifier.fillMaxWidth()) {
-                // 1. Lista de Ejercicios
                 if (exercisesWithSets.isNotEmpty()) {
                     DraggableLoadoutList(
                         items = exercisesWithSets,
@@ -399,7 +385,6 @@ private fun LoadoutContent(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 2. Botón Añadir (Al final)
                 OutlinedButton(
                     onClick = onAddExercise,
                     modifier = Modifier
@@ -411,7 +396,7 @@ private fun LoadoutContent(
                 ) {
                     Icon(Icons.Default.Add, null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.day_slot_btn_equip), fontWeight = FontWeight.Bold)
+                    Text("Añadir Ejercicio", fontWeight = FontWeight.Bold) // Texto limpio
                 }
             }
         }
@@ -422,7 +407,7 @@ private fun LoadoutContent(
 private fun DraggableLoadoutList(
     items: List<ExerciseWithSelectedSet>,
     onExerciseClick: (String) -> Unit,
-    onRemoveExercise: (TrainingAssignment) -> Unit, // UPDATED
+    onRemoveExercise: (TrainingAssignment) -> Unit,
     onMoveExercise: (Int, Int) -> Unit
 ) {
     var draggedIndex by remember { mutableStateOf<Int?>(null) }
@@ -441,7 +426,7 @@ private fun DraggableLoadoutList(
                 isDragged = draggedIndex == index,
                 isDraggedOver = targetIndex == index,
                 onClick = { onExerciseClick(item.exercise.id) },
-                onRemove = { onRemoveExercise(item.assignment) }, // Pasamos el assignment limpio
+                onRemove = { onRemoveExercise(item.assignment) },
                 onDragStart = { positionY ->
                     draggedIndex = index
                     targetIndex = index
@@ -530,14 +515,13 @@ private fun HunterDraggableCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Drag Handle
             Icon(
                 imageVector = Icons.Default.DragHandle,
                 contentDescription = null,
                 tint = HunterTextSecondary,
                 modifier = Modifier
                     .size(24.dp)
-                    .pointerInput(item.assignment) { // Clave estable: el objeto Assignment
+                    .pointerInput(item.assignment) {
                         detectDragGesturesAfterLongPress(
                             onDragStart = {
                                 onDragStart(cardPositionY)
@@ -572,8 +556,18 @@ private fun HunterDraggableCard(
                 )
 
                 if (item.selectedSet != null) {
+                    val repsText = if (item.selectedSet.minReps == item.selectedSet.maxReps) {
+                        "${item.selectedSet.minReps}"
+                    } else {
+                        "${item.selectedSet.minReps}-${item.selectedSet.maxReps}"
+                    }
+
+                    val rirText = if (item.selectedSet.minRir != null && item.selectedSet.maxRir != null) {
+                        if (item.selectedSet.minRir == item.selectedSet.maxRir) " | RIR ${item.selectedSet.minRir}" else " | RIR ${item.selectedSet.minRir}-${item.selectedSet.maxRir}"
+                    } else ""
+
                     Text(
-                        text = "${stringResource(R.string.day_slot_variant_prefix)}: ${item.selectedSet.series}×${item.selectedSet.reps} @ ${item.selectedSet.weightKg}${stringResource(R.string.common_kg)}",
+                        text = "Variante: ${item.selectedSet.series}×$repsText @ ${item.selectedSet.weightKg}kg$rirText",
                         style = MaterialTheme.typography.labelSmall,
                         color = HunterPrimary
                     )
@@ -616,7 +610,7 @@ private fun HunterInventorySheet(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = stringResource(R.string.day_slot_sheet_title),
+                text = "Seleccionar Ejercicio", // Texto limpio
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
                 color = HunterTextPrimary
             )
@@ -670,6 +664,15 @@ private fun HunterInventorySheet(
                         if (isSetsExpanded) {
                             Divider(color = HunterPrimary.copy(alpha = 0.1f))
                             exercise.sets.forEach { set ->
+                                val repsText = if (set.minReps == set.maxReps) {
+                                    "${set.minReps}"
+                                } else {
+                                    "${set.minReps}-${set.maxReps}"
+                                }
+                                val rirText = if (set.minRir != null && set.maxRir != null) {
+                                    if (set.minRir == set.maxRir) " | RIR ${set.minRir}" else " | RIR ${set.minRir}-${set.maxRir}"
+                                } else ""
+
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -680,7 +683,7 @@ private fun HunterInventorySheet(
                                 ) {
                                     Text(stringResource(R.string.day_slot_variant_prefix), style = MaterialTheme.typography.bodySmall, color = HunterTextSecondary)
                                     Text(
-                                        "${set.series}×${set.reps} @ ${set.weightKg}${stringResource(R.string.common_kg)}",
+                                        "${set.series}×$repsText @ ${set.weightKg}kg$rirText",
                                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
                                         color = HunterPrimary
                                     )
