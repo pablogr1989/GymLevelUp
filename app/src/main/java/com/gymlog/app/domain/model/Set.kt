@@ -9,6 +9,6 @@ data class Set(
     val minReps: Int,
     val maxReps: Int,
     val weightKg: Float,
-    val minRir: Int? = null, // NUEVO: RIR Mínimo opcional
-    val maxRir: Int? = null  // NUEVO: RIR Máximo opcional
+    val minRir: Int? = null,
+    val maxRir: Int? = null
 )

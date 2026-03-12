@@ -16,17 +16,16 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-// Modelo UI auxiliar
-data class ExerciseWithSelectedSet(
+data class ExerciseWithSelectedSets(
     val exercise: Exercise,
-    val selectedSet: GymSet?,
-    val assignment: TrainingAssignment // Objeto puro para referencias
+    val selectedSets: List<GymSet>,
+    val assignment: TrainingAssignment
 )
 
 data class DaySlotUiState(
     val daySlot: DaySlot? = null,
     val selectedCategories: Set<DayCategory> = emptySet(),
-    val currentAssignments: List<TrainingAssignment> = emptyList(), // LISTA TIPADA
+    val currentAssignments: List<TrainingAssignment> = emptyList(),
     val completed: Boolean = false,
     val isLoading: Boolean = false,
     val isCategoriesExpanded: Boolean = true,
@@ -40,85 +39,49 @@ class DaySlotDetailViewModel @Inject constructor(
     private val exerciseRepository: ExerciseRepository
 ) : ViewModel() {
 
-    private val daySlotId: String = savedStateHandle.get<String>("daySlotId") ?: ""
+    private val daySlotId: String = checkNotNull(savedStateHandle["daySlotId"])
 
     private val _uiState = MutableStateFlow(DaySlotUiState())
-    val uiState = _uiState.asStateFlow()
 
-    // --- StateFlows (Compatibilidad UI) ---
     val daySlot = _uiState.map { it.daySlot }.stateIn(viewModelScope, SharingStarted.Lazily, null)
     val selectedCategories = _uiState.map { it.selectedCategories }.stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
     val completed = _uiState.map { it.completed }.stateIn(viewModelScope, SharingStarted.Lazily, false)
     val isLoading = _uiState.map { it.isLoading }.stateIn(viewModelScope, SharingStarted.Lazily, false)
     val isCategoriesExpanded = _uiState.map { it.isCategoriesExpanded }.stateIn(viewModelScope, SharingStarted.Lazily, true)
     val isExercisesExpanded = _uiState.map { it.isExercisesExpanded }.stateIn(viewModelScope, SharingStarted.Lazily, true)
-    // --------------------------------------
+
+    private val _filteredExercises = MutableStateFlow<List<Exercise>>(emptyList())
+    val filteredExercises = _filteredExercises.asStateFlow()
+
+    val selectedExercisesWithSets = _uiState.map { state ->
+        val currentDaySlot = state.daySlot ?: return@map emptyList()
+        val allExercises = exerciseRepository.getAllExercises().first()
+        val exerciseMap = allExercises.associateBy { it.id }
+
+        state.currentAssignments.mapNotNull { assignment ->
+            val exercise = exerciseMap[assignment.exerciseId]
+            if (exercise != null) {
+                // Leemos los IDs de las variantes
+                val setIds = assignment.targetSetId?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+                var selectedSets = setIds.mapNotNull { id -> exercise.sets.find { it.id == id } }
+
+                // LÓGICA DE RESCATE (FALLBACK):
+                // Si un ejercicio antiguo no tiene variantes asignadas (targetSetId == null),
+                // pero el ejercicio tiene variantes creadas, cogemos automáticamente la primera.
+                if (selectedSets.isEmpty() && exercise.sets.isNotEmpty()) {
+                    selectedSets = listOf(exercise.sets.first())
+                }
+
+                ExerciseWithSelectedSets(exercise, selectedSets, assignment)
+            } else null
+        }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _navigateBack = MutableStateFlow(false)
     val navigateBack = _navigateBack.asStateFlow()
 
     private val _navigateToTraining = MutableStateFlow(false)
     val navigateToTraining = _navigateToTraining.asStateFlow()
-
-    private val allExercises: StateFlow<List<Exercise>> = exerciseRepository
-        .getAllExercises()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = emptyList()
-        )
-
-    val selectedExercisesWithSets: StateFlow<List<ExerciseWithSelectedSet>> = combine(
-        allExercises,
-        _uiState.map { it.currentAssignments }
-    ) { exercises, assignments ->
-        val exerciseMap = exercises.associateBy { it.id }
-
-        assignments.mapNotNull { assignment ->
-            val exercise = exerciseMap[assignment.exerciseId]
-            if (exercise != null) {
-                val set = if (assignment.targetSetId != null) {
-                    exercise.sets.find { it.id == assignment.targetSetId } ?: exercise.sets.firstOrNull()
-                } else {
-                    exercise.sets.firstOrNull()
-                }
-                ExerciseWithSelectedSet(exercise, set, assignment)
-            } else {
-                null
-            }
-        }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
-    )
-
-    // Lista filtrada de ejercicios para el selector (bottom sheet)
-    val filteredExercises: StateFlow<List<Exercise>> = combine(
-        allExercises,
-        _uiState.map { it.selectedCategories }
-    ) { exercises, categories ->
-        if (categories.isEmpty()) {
-            exercises
-        } else {
-            if (categories.contains(DayCategory.FULL_BODY)) {
-                exercises
-            } else if (categories.all { it == DayCategory.CARDIO || it == DayCategory.REST }) {
-                emptyList()
-            } else {
-                exercises.filter { exercise ->
-                    val muscleGroups = categories.mapNotNull { category ->
-                        categoryToMuscleGroup(category)
-                    }
-                    exercise.muscleGroup in muscleGroups
-                }
-            }
-        }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
-    )
 
     init {
         loadDaySlot()
@@ -127,91 +90,85 @@ class DaySlotDetailViewModel @Inject constructor(
     private fun loadDaySlot() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            calendarRepository.getDayById(daySlotId)?.let { daySlot ->
-                _uiState.update { it.copy(
-                    daySlot = daySlot,
-                    selectedCategories = daySlot.categories.toSet(),
-                    currentAssignments = daySlot.exercises, // Carga directa, sin splits
-                    completed = daySlot.completed
-                )}
+            calendarRepository.getDayById(daySlotId)?.let { currentDaySlot ->
+                _uiState.update { state ->
+                    state.copy(
+                        daySlot = currentDaySlot,
+                        selectedCategories = currentDaySlot.categories.toSet(),
+                        currentAssignments = currentDaySlot.exercises,
+                        completed = currentDaySlot.completed,
+                        isLoading = false
+                    )
+                }
+                loadFilteredExercises()
             }
-            _uiState.update { it.copy(isLoading = false) }
+        }
+    }
+
+    private fun loadFilteredExercises() {
+        viewModelScope.launch {
+            val categories = _uiState.value.selectedCategories
+            val muscleGroups = categories.mapNotNull { categoryToMuscleGroup(it) }
+
+            exerciseRepository.getAllExercises().collect { allExercises ->
+                val filtered = if (muscleGroups.isEmpty()) {
+                    allExercises
+                } else {
+                    allExercises.filter { muscleGroups.contains(it.muscleGroup) }
+                }
+                _filteredExercises.value = filtered
+            }
         }
     }
 
     fun toggleCategory(category: DayCategory) {
         _uiState.update { state ->
-            val current = state.selectedCategories
-            val newCategories = if (current.contains(category)) current - category else current + category
-
-            // Limpieza inteligente de ejercicios incompatibles
-            var newAssignments = state.currentAssignments
-
-            if (newAssignments.isNotEmpty()) {
-                if (newCategories.all { it == DayCategory.CARDIO || it == DayCategory.REST }) {
-                    newAssignments = emptyList()
-                } else {
-                    val compatibleExercises = if (newCategories.contains(DayCategory.FULL_BODY)) {
-                        allExercises.value
-                    } else {
-                        allExercises.value.filter { exercise ->
-                            val muscleGroups = newCategories.mapNotNull { cat -> categoryToMuscleGroup(cat) }
-                            exercise.muscleGroup in muscleGroups
-                        }
-                    }
-                    newAssignments = newAssignments.filter { assignment ->
-                        compatibleExercises.any { it.id == assignment.exerciseId }
-                    }
-                }
+            val newCategories = if (state.selectedCategories.contains(category)) {
+                state.selectedCategories - category
+            } else {
+                state.selectedCategories + category
             }
-
-            state.copy(
-                selectedCategories = newCategories,
-                currentAssignments = newAssignments
-            )
+            state.copy(selectedCategories = newCategories)
         }
-    }
-
-    fun addExercise(exerciseId: String, setId: String) {
-        val newAssignment = TrainingAssignment(exerciseId, setId)
-        _uiState.update { state ->
-            // Evitar duplicados exactos si se desea, o permitir (aquí permitimos pero verificamos si ya existe exacto)
-            val current = state.currentAssignments
-            if (!current.contains(newAssignment)) {
-                state.copy(currentAssignments = current + newAssignment)
-            } else state
-        }
-    }
-
-    fun removeExercise(assignment: TrainingAssignment) {
-        _uiState.update { state ->
-            state.copy(currentAssignments = state.currentAssignments - assignment)
-        }
-    }
-
-    fun moveExercise(fromIndex: Int, toIndex: Int) {
-        val currentList = _uiState.value.currentAssignments.toMutableList()
-        if (fromIndex in currentList.indices && toIndex in currentList.indices) {
-            val item = currentList.removeAt(fromIndex)
-            currentList.add(toIndex, item)
-            _uiState.update { it.copy(currentAssignments = currentList) }
-        }
+        loadFilteredExercises()
     }
 
     fun toggleCompleted() {
         _uiState.update { it.copy(completed = !it.completed) }
     }
 
+    fun addExercises(exerciseId: String, setIds: List<String>) {
+        _uiState.update { state ->
+            val targetSetIdsStr = if (setIds.isEmpty()) null else setIds.joinToString(",")
+            val newAssignment = TrainingAssignment(exerciseId, targetSetId = targetSetIdsStr)
+            state.copy(currentAssignments = state.currentAssignments + newAssignment)
+        }
+    }
+
+    fun removeExercise(assignmentToRemove: TrainingAssignment) {
+        _uiState.update { state ->
+            state.copy(currentAssignments = state.currentAssignments.filter { it !== assignmentToRemove })
+        }
+    }
+
+    fun moveExercise(fromIndex: Int, toIndex: Int) {
+        _uiState.update { state ->
+            val newList = state.currentAssignments.toMutableList()
+            val item = newList.removeAt(fromIndex)
+            newList.add(toIndex, item)
+            state.copy(currentAssignments = newList)
+        }
+    }
+
     fun saveDaySlot() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
             val state = _uiState.value
             val currentDaySlot = state.daySlot ?: return@launch
 
-            _uiState.update { it.copy(isLoading = true) }
-
             val updatedDaySlot = currentDaySlot.copy(
                 categories = state.selectedCategories.toList(),
-                exercises = state.currentAssignments, // Guardado directo
+                exercises = state.currentAssignments,
                 completed = state.completed
             )
 
@@ -249,8 +206,7 @@ class DaySlotDetailViewModel @Inject constructor(
             DayCategory.TRICEPS -> MuscleGroup.TRICEPS
             DayCategory.SHOULDERS -> MuscleGroup.SHOULDERS
             DayCategory.FULL_BODY -> null
-            DayCategory.CARDIO -> null
-            DayCategory.REST -> null
+            DayCategory.CARDIO, DayCategory.REST -> null
         }
     }
 }

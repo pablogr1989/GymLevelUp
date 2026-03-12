@@ -29,43 +29,52 @@ import com.gymlog.app.ui.screens.edit.EditSetScreen
 import com.gymlog.app.ui.screens.main.MainScreen
 import com.gymlog.app.ui.screens.timer.TimerScreen
 import com.gymlog.app.ui.screens.training.TrainingModeScreen
+import com.gymlog.app.ui.screens.history.WorkoutHistoryScreen // NUEVA PANTALLA IMPORTADA
 import com.gymlog.app.ui.theme.*
 
+// Modificado para aceptar String directo y no tener que tocar strings.xml
 sealed class BottomNavItem(
     val route: String,
-    @StringRes val titleResId: Int,
+    @StringRes val titleResId: Int? = null,
+    val titleString: String? = null,
     val icon: ImageVector
 ) {
-    object Exercises : BottomNavItem("exercises_tab", R.string.nav_exercises, Icons.Default.FitnessCenter)
-    object Calendars : BottomNavItem("calendars_tab", R.string.nav_calendars, Icons.Default.CalendarMonth)
-    object Timer : BottomNavItem("timer_tab", R.string.nav_timer, Icons.Default.Timer)
+    object Exercises : BottomNavItem("exercises_tab", titleResId = R.string.nav_exercises, icon = Icons.Default.FitnessCenter)
+    object Calendars : BottomNavItem("calendars_tab", titleResId = R.string.nav_calendars, icon = Icons.Default.CalendarMonth)
+    object Timer : BottomNavItem("timer_tab", titleResId = R.string.nav_timer, icon = Icons.Default.Timer)
+
+    // NUEVA PESTAÑA AÑADIDA
+    object History : BottomNavItem(Screen.WorkoutHistory.route, titleString = "Historial", icon = Icons.Default.History)
 }
 
 @Composable
 fun MainAppScreen() {
     val navController = rememberNavController()
+    // AÑADIMOS HISTORY A LA LISTA
     val items = listOf(
         BottomNavItem.Exercises,
         BottomNavItem.Calendars,
+        BottomNavItem.History, // Aparecerá en 3er lugar
         BottomNavItem.Timer
     )
 
     Scaffold(
-        containerColor = HunterBlack, // Fondo global seguro
+        containerColor = HunterBlack,
         bottomBar = {
             NavigationBar(
-                containerColor = HunterSurface, // Fondo de la barra inferior
-                contentColor = HunterTextSecondary // Color base de íconos no seleccionados
+                containerColor = HunterSurface,
+                contentColor = HunterTextSecondary
             ) {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
 
                 items.forEach { item ->
                     val isSelected = currentDestination?.hierarchy?.any { it.route == item.route } == true
+                    val titleText = item.titleString ?: item.titleResId?.let { stringResource(it) } ?: ""
 
                     NavigationBarItem(
-                        icon = { Icon(item.icon, contentDescription = stringResource(item.titleResId)) },
-                        label = { Text(stringResource(item.titleResId)) },
+                        icon = { Icon(item.icon, contentDescription = titleText) },
+                        label = { Text(titleText) },
                         selected = isSelected,
                         onClick = {
                             navController.navigate(item.route) {
@@ -77,9 +86,9 @@ fun MainAppScreen() {
                             }
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = HunterBlack, // Icono negro sobre indicador brillante
+                            selectedIconColor = HunterBlack,
                             selectedTextColor = HunterPrimary,
-                            indicatorColor = HunterPrimary, // Fondo brillante del ícono seleccionado
+                            indicatorColor = HunterPrimary,
                             unselectedIconColor = HunterTextSecondary,
                             unselectedTextColor = HunterTextSecondary
                         )
@@ -203,6 +212,11 @@ fun MainAppScreen() {
                         navController.navigate(Screen.CreateCalendar.route)
                     }
                 )
+            }
+
+            // NUEVA RUTA PARA EL HISTORIAL AÑADIDA AQUÍ
+            composable(Screen.WorkoutHistory.route) {
+                WorkoutHistoryScreen()
             }
 
             composable(BottomNavItem.Timer.route) {

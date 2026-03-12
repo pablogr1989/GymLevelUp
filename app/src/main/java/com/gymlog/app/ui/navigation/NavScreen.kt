@@ -104,4 +104,7 @@ sealed class Screen(
     object Timer : Screen(route = "timer")
 
     object Backup : Screen(route = "backup")
+
+    // NUEVA RUTA AÑADIDA AQUÍ
+    object WorkoutHistory : Screen(route = "workout_history")
 }

@@ -1,6 +1,5 @@
 package com.gymlog.app.ui.screens.calendars
 
-import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,7 +34,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.gymlog.app.R
 import com.gymlog.app.data.local.entity.DayCategory
 import com.gymlog.app.domain.model.Exercise
-import com.gymlog.app.domain.model.Set as GymSet
 import com.gymlog.app.domain.model.TrainingAssignment
 import com.gymlog.app.ui.theme.*
 import com.gymlog.app.ui.util.UiMappers
@@ -60,7 +58,6 @@ fun DaySlotDetailScreen(
     val isExercisesExpanded by viewModel.isExercisesExpanded.collectAsState()
 
     var showBottomSheet by remember { mutableStateOf(false) }
-
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     LaunchedEffect(navigateBack) {
@@ -85,10 +82,7 @@ fun DaySlotDetailScreen(
                     Text(
                         daySlot?.dayOfWeek?.let { stringResource(UiMappers.getDisplayNameRes(it)).uppercase() }
                             ?: stringResource(R.string.day_slot_default_title),
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.sp
-                        )
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp)
                     )
                 },
                 navigationIcon = {
@@ -96,20 +90,12 @@ fun DaySlotDetailScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = HunterTextPrimary)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = HunterBlack,
-                    titleContentColor = HunterTextPrimary
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = HunterBlack, titleContentColor = HunterTextPrimary)
             )
         }
     ) { paddingValues ->
         if (isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
+            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = HunterPrimary)
             }
         } else {
@@ -121,36 +107,28 @@ fun DaySlotDetailScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                DaySlotStatus(
-                    completed = completed,
-                    onToggle = viewModel::toggleCompleted
-                )
+                DaySlotStatus(completed = completed, onToggle = viewModel::toggleCompleted)
 
                 if (selectedExercisesWithSets.isNotEmpty()) {
                     HunterButton(
-                        text = stringResource(R.string.day_slot_btn_start),
+                        text = "Iniciar Entrenamiento",
                         onClick = viewModel::startTraining,
                         color = if (completed) HunterCyan else HunterPurple,
                         textColor = HunterTextPrimary,
-                        icon = {
-                            Icon(Icons.Default.PlayArrow, null, tint = HunterTextPrimary)
-                        }
+                        icon = { Icon(Icons.Default.PlayArrow, null, tint = HunterTextPrimary) }
                     )
                 }
 
                 HunterExpandableSection(
-                    title = "Categoría del día", // Texto limpio
+                    title = "Categoría del día",
                     isExpanded = isCategoriesExpanded,
                     onToggle = viewModel::toggleCategoriesExpansion
                 ) {
-                    CategorySelectorGrid(
-                        selectedCategories = selectedCategories,
-                        onToggleCategory = viewModel::toggleCategory
-                    )
+                    CategorySelectorGrid(selectedCategories = selectedCategories, onToggleCategory = viewModel::toggleCategory)
                 }
 
                 HunterExpandableSection(
-                    title = "Ejercicios", // Texto limpio
+                    title = "Ejercicios y Variantes",
                     isExpanded = isExercisesExpanded,
                     onToggle = viewModel::toggleExercisesExpansion,
                     badgeCount = selectedExercisesWithSets.size
@@ -167,12 +145,11 @@ fun DaySlotDetailScreen(
                 }
 
                 HunterButton(
-                    text = stringResource(R.string.day_slot_btn_confirm),
+                    text = "Guardar Día",
                     onClick = viewModel::saveDaySlot,
                     enabled = !isLoading,
                     color = HunterPrimary
                 )
-
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
@@ -187,47 +164,32 @@ fun DaySlotDetailScreen(
         ) {
             HunterInventorySheet(
                 exercises = filteredExercises,
-                onExerciseSetSelect = { exercise, set ->
-                    viewModel.addExercise(exercise.id, set.id)
+                onAddExercises = { exerciseId, setIds ->
+                    viewModel.addExercises(exerciseId, setIds)
                     showBottomSheet = false
                 },
-                onDismiss = { showBottomSheet = false },
-                selectedCategories = selectedCategories
+                onDismiss = { showBottomSheet = false }
             )
         }
     }
 }
 
 @Composable
-private fun DaySlotStatus(
-    completed: Boolean,
-    onToggle: () -> Unit
-) {
-    HunterCard(
-        onClick = onToggle,
-        modifier = Modifier.fillMaxWidth()
-    ) {
+private fun DaySlotStatus(completed: Boolean, onToggle: () -> Unit) {
+    HunterCard(onClick = onToggle, modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
+                Text(text = "Estado", style = MaterialTheme.typography.labelSmall, color = HunterTextSecondary)
                 Text(
-                    text = "Estado",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = HunterTextSecondary
-                )
-                Text(
-                    text = if (completed) stringResource(R.string.day_slot_status_completed)
-                    else stringResource(R.string.day_slot_status_pending),
+                    text = if (completed) stringResource(R.string.day_slot_status_completed) else stringResource(R.string.day_slot_status_pending),
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp),
                     color = if (completed) ScreenColors.DaySlotDetail.StatusCompleted else ScreenColors.DaySlotDetail.StatusPending
                 )
             }
-
             Box(
                 modifier = Modifier
                     .size(width = 60.dp, height = 32.dp)
@@ -249,35 +211,17 @@ private fun DaySlotStatus(
 }
 
 @Composable
-private fun HunterExpandableSection(
-    title: String,
-    isExpanded: Boolean,
-    onToggle: () -> Unit,
-    badgeCount: Int? = null,
-    content: @Composable () -> Unit
-) {
+private fun HunterExpandableSection(title: String, isExpanded: Boolean, onToggle: () -> Unit, badgeCount: Int? = null, content: @Composable () -> Unit) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, ScreenColors.DaySlotDetail.CardBorder, RoundedCornerShape(16.dp))
-            .clip(RoundedCornerShape(16.dp))
-            .background(HunterSurface)
+        modifier = Modifier.fillMaxWidth().border(1.dp, ScreenColors.DaySlotDetail.CardBorder, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp)).background(HunterSurface)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onToggle() }
-                .background(HunterSurface)
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().clickable { onToggle() }.background(HunterSurface).padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                    color = HunterPrimary
-                )
+                Text(text = title, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold), color = HunterPrimary)
                 if (badgeCount != null && badgeCount > 0) {
                     Spacer(modifier = Modifier.width(8.dp))
                     Badge(containerColor = HunterPrimary) { Text("$badgeCount") }
@@ -289,35 +233,20 @@ private fun HunterExpandableSection(
                 tint = HunterTextSecondary
             )
         }
-
-        if (isExpanded) {
-            Box(modifier = Modifier.padding(16.dp)) {
-                content()
-            }
-        }
+        if (isExpanded) Box(modifier = Modifier.padding(16.dp)) { content() }
     }
 }
 
 @Composable
-private fun CategorySelectorGrid(
-    selectedCategories: Set<DayCategory>,
-    onToggleCategory: (DayCategory) -> Unit
-) {
+private fun CategorySelectorGrid(selectedCategories: Set<DayCategory>, onToggleCategory: (DayCategory) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         val categories = DayCategory.values().toList()
         categories.chunked(2).forEach { rowCategories ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 rowCategories.forEach { category ->
                     val isSelected = selectedCategories.contains(category)
-
                     Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(40.dp)
-                            .clickable { onToggleCategory(category) },
+                        modifier = Modifier.weight(1f).height(40.dp).clickable { onToggleCategory(category) },
                         shape = RoundedCornerShape(8.dp),
                         color = if (isSelected) HunterPrimary.copy(alpha = 0.2f) else HunterBlack,
                         border = BorderStroke(1.dp, if (isSelected) HunterPrimary else HunterPrimary.copy(0.3f))
@@ -331,9 +260,7 @@ private fun CategorySelectorGrid(
                         }
                     }
                 }
-                if (rowCategories.size == 1) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
+                if (rowCategories.size == 1) Spacer(modifier = Modifier.weight(1f))
             }
         }
     }
@@ -341,7 +268,7 @@ private fun CategorySelectorGrid(
 
 @Composable
 private fun LoadoutContent(
-    exercisesWithSets: List<ExerciseWithSelectedSet>,
+    exercisesWithSets: List<ExerciseWithSelectedSets>,
     hasCategories: Boolean,
     isCardioOrRest: Boolean,
     onAddExercise: () -> Unit,
@@ -350,20 +277,8 @@ private fun LoadoutContent(
     onMoveExercise: (Int, Int) -> Unit
 ) {
     when {
-        !hasCategories -> {
-            Text(
-                "Añade una categoría primero.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = HunterTextSecondary
-            )
-        }
-        isCardioOrRest -> {
-            Text(
-                stringResource(R.string.day_slot_msg_cardio_rest),
-                style = MaterialTheme.typography.bodyMedium,
-                color = HunterCyan
-            )
-        }
+        !hasCategories -> Text("Añade una categoría primero.", style = MaterialTheme.typography.bodyMedium, color = HunterTextSecondary)
+        isCardioOrRest -> Text(stringResource(R.string.day_slot_msg_cardio_rest), style = MaterialTheme.typography.bodyMedium, color = HunterCyan)
         else -> {
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (exercisesWithSets.isNotEmpty()) {
@@ -382,21 +297,17 @@ private fun LoadoutContent(
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                 }
-
                 Spacer(modifier = Modifier.height(16.dp))
-
                 OutlinedButton(
                     onClick = onAddExercise,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
                     shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, HunterPrimary.copy(alpha = 0.5f)),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = HunterPrimary)
                 ) {
                     Icon(Icons.Default.Add, null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Añadir Ejercicio", fontWeight = FontWeight.Bold) // Texto limpio
+                    Text("Añadir Ejercicio", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -405,7 +316,7 @@ private fun LoadoutContent(
 
 @Composable
 private fun DraggableLoadoutList(
-    items: List<ExerciseWithSelectedSet>,
+    items: List<ExerciseWithSelectedSets>,
     onExerciseClick: (String) -> Unit,
     onRemoveExercise: (TrainingAssignment) -> Unit,
     onMoveExercise: (Int, Int) -> Unit
@@ -415,10 +326,7 @@ private fun DraggableLoadoutList(
     val cardPositions = remember { mutableStateMapOf<Int, Float>() }
     var currentDragY by remember { mutableFloatStateOf(0f) }
 
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items.forEachIndexed { index, item ->
             HunterDraggableCard(
                 item = item,
@@ -427,20 +335,10 @@ private fun DraggableLoadoutList(
                 isDraggedOver = targetIndex == index,
                 onClick = { onExerciseClick(item.exercise.id) },
                 onRemove = { onRemoveExercise(item.assignment) },
-                onDragStart = { positionY ->
-                    draggedIndex = index
-                    targetIndex = index
-                    currentDragY = positionY
-                },
+                onDragStart = { positionY -> draggedIndex = index; targetIndex = index; currentDragY = positionY },
                 onDragEnd = {
-                    draggedIndex?.let { from ->
-                        targetIndex?.let { to ->
-                            if (from != to) onMoveExercise(from, to)
-                        }
-                    }
-                    draggedIndex = null
-                    targetIndex = null
-                    currentDragY = 0f
+                    draggedIndex?.let { from -> targetIndex?.let { to -> if (from != to) onMoveExercise(from, to) } }
+                    draggedIndex = null; targetIndex = null; currentDragY = 0f
                 },
                 onDrag = { dragAmount ->
                     currentDragY += dragAmount
@@ -448,15 +346,11 @@ private fun DraggableLoadoutList(
                         val draggedCenter = currentDragY + 35f
                         var closestIndex = draggedIdx
                         var minDistance = Float.MAX_VALUE
-
                         cardPositions.forEach { (idx, posY) ->
                             if (idx != draggedIdx) {
                                 val cardCenter = posY + 35f
                                 val distance = kotlin.math.abs(draggedCenter - cardCenter)
-                                if (distance < minDistance && distance < 60f) {
-                                    minDistance = distance
-                                    closestIndex = idx
-                                }
+                                if (distance < minDistance && distance < 60f) { minDistance = distance; closestIndex = idx }
                             }
                         }
                         if (closestIndex != targetIndex) targetIndex = closestIndex
@@ -471,7 +365,7 @@ private fun DraggableLoadoutList(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HunterDraggableCard(
-    item: ExerciseWithSelectedSet,
+    item: ExerciseWithSelectedSets,
     index: Int,
     isDragged: Boolean,
     isDraggedOver: Boolean,
@@ -491,7 +385,6 @@ private fun HunterDraggableCard(
         isDraggedOver -> MaterialTheme.colorScheme.secondaryContainer
         else -> HunterBlack
     }
-
     val borderColor = if (isDragged) HunterPrimary else HunterPrimary.copy(alpha = 0.2f)
     val zIndex = if (isDragged) 10f else 0f
 
@@ -500,18 +393,13 @@ private fun HunterDraggableCard(
             .fillMaxWidth()
             .zIndex(zIndex)
             .offset(y = with(density) { localDragOffset.toDp() })
-            .onGloballyPositioned { coordinates ->
-                cardPositionY = coordinates.positionInParent().y
-                onPositionCalculated(cardPositionY)
-            },
+            .onGloballyPositioned { coordinates -> cardPositionY = coordinates.positionInParent().y; onPositionCalculated(cardPositionY) },
         shape = RoundedCornerShape(12.dp),
         color = backgroundColor,
         border = BorderStroke(1.dp, borderColor)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth().padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -523,23 +411,10 @@ private fun HunterDraggableCard(
                     .size(24.dp)
                     .pointerInput(item.assignment) {
                         detectDragGesturesAfterLongPress(
-                            onDragStart = {
-                                onDragStart(cardPositionY)
-                                localDragOffset = 0f
-                            },
-                            onDragEnd = {
-                                onDragEnd()
-                                localDragOffset = 0f
-                            },
-                            onDragCancel = {
-                                onDragEnd()
-                                localDragOffset = 0f
-                            },
-                            onDrag = { change, dragAmount ->
-                                change.consume()
-                                localDragOffset += dragAmount.y
-                                onDrag(dragAmount.y)
-                            }
+                            onDragStart = { onDragStart(cardPositionY); localDragOffset = 0f },
+                            onDragEnd = { onDragEnd(); localDragOffset = 0f },
+                            onDragCancel = { onDragEnd(); localDragOffset = 0f },
+                            onDrag = { change, dragAmount -> change.consume(); localDragOffset += dragAmount.y; onDrag(dragAmount.y) }
                         )
                     }
             )
@@ -555,25 +430,23 @@ private fun HunterDraggableCard(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                if (item.selectedSet != null) {
-                    val repsText = if (item.selectedSet.minReps == item.selectedSet.maxReps) {
-                        "${item.selectedSet.minReps}"
-                    } else {
-                        "${item.selectedSet.minReps}-${item.selectedSet.maxReps}"
+                if (item.selectedSets.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    item.selectedSets.forEachIndexed { idx, set ->
+                        val repsText = if (set.minReps == set.maxReps) "${set.minReps}" else "${set.minReps}-${set.maxReps}"
+                        val rirText = if (set.minRir != null && set.maxRir != null) {
+                            if (set.minRir == set.maxRir) " | RIR ${set.minRir}" else " | RIR ${set.minRir}-${set.maxRir}"
+                        } else ""
+
+                        Text(
+                            text = "Var ${idx + 1}: ${set.series}×$repsText @ ${set.weightKg}kg$rirText",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = HunterPrimary
+                        )
                     }
-
-                    val rirText = if (item.selectedSet.minRir != null && item.selectedSet.maxRir != null) {
-                        if (item.selectedSet.minRir == item.selectedSet.maxRir) " | RIR ${item.selectedSet.minRir}" else " | RIR ${item.selectedSet.minRir}-${item.selectedSet.maxRir}"
-                    } else ""
-
-                    Text(
-                        text = "Variante: ${item.selectedSet.series}×$repsText @ ${item.selectedSet.weightKg}kg$rirText",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = HunterPrimary
-                    )
                 } else {
                     Text(
-                        text = stringResource(R.string.day_slot_variant_unconfigured),
+                        text = "Ninguna variante configurada",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -581,12 +454,7 @@ private fun HunterDraggableCard(
             }
 
             IconButton(onClick = onRemove) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = stringResource(R.string.common_delete),
-                    tint = HunterTextSecondary.copy(alpha = 0.5f),
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(Icons.Default.Close, stringResource(R.string.common_delete), tint = HunterTextSecondary.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -595,27 +463,22 @@ private fun HunterDraggableCard(
 @Composable
 private fun HunterInventorySheet(
     exercises: List<Exercise>,
-    onExerciseSetSelect: (Exercise, GymSet) -> Unit,
-    onDismiss: () -> Unit,
-    selectedCategories: Set<DayCategory>
+    onAddExercises: (String, List<String>) -> Unit,
+    onDismiss: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
+    // Controlamos el ejercicio desplegado y las variantes marcadas dentro de él
+    var expandedExerciseId by remember { mutableStateOf<String?>(null) }
+    var selectedVariantIds by remember { mutableStateOf(setOf<String>()) }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Seleccionar Ejercicio", // Texto limpio
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
-                color = HunterTextPrimary
-            )
+            Text("Seleccionar Ejercicio y Variantes", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black), color = HunterTextPrimary)
             IconButton(onClick = onDismiss) {
-                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_close), tint = HunterTextPrimary)
+                Icon(Icons.Default.Close, stringResource(R.string.common_close), tint = HunterTextPrimary)
             }
         }
 
@@ -627,10 +490,10 @@ private fun HunterInventorySheet(
 
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.heightIn(max = 400.dp)
+            modifier = Modifier.weight(1f, fill = false).heightIn(max = 400.dp)
         ) {
-            itemsIndexed(exercises) { index, exercise ->
-                var isSetsExpanded by remember { mutableStateOf(false) }
+            itemsIndexed(exercises) { _, exercise ->
+                val isExpanded = expandedExerciseId == exercise.id
                 val hasSets = exercise.sets.isNotEmpty()
 
                 Surface(
@@ -638,37 +501,36 @@ private fun HunterInventorySheet(
                     color = HunterBlack,
                     border = BorderStroke(1.dp, HunterPrimary.copy(alpha = 0.2f)),
                     modifier = Modifier.clickable {
-                        if (hasSets) isSetsExpanded = !isSetsExpanded
+                        if (hasSets) {
+                            if (isExpanded) {
+                                expandedExerciseId = null
+                                selectedVariantIds = emptySet()
+                            } else {
+                                expandedExerciseId = exercise.id
+                                selectedVariantIds = emptySet()
+                            }
+                        }
                     }
                 ) {
                     Column {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = exercise.name,
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = HunterTextPrimary
-                            )
+                            Text(text = exercise.name, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = HunterTextPrimary)
                             Icon(
-                                imageVector = if (isSetsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                                 contentDescription = null,
                                 tint = if (hasSets) HunterPrimary else HunterTextSecondary.copy(alpha = 0.3f)
                             )
                         }
 
-                        if (isSetsExpanded) {
+                        if (isExpanded) {
                             Divider(color = HunterPrimary.copy(alpha = 0.1f))
                             exercise.sets.forEach { set ->
-                                val repsText = if (set.minReps == set.maxReps) {
-                                    "${set.minReps}"
-                                } else {
-                                    "${set.minReps}-${set.maxReps}"
-                                }
+                                val isSelected = selectedVariantIds.contains(set.id)
+                                val repsText = if (set.minReps == set.maxReps) "${set.minReps}" else "${set.minReps}-${set.maxReps}"
                                 val rirText = if (set.minRir != null && set.maxRir != null) {
                                     if (set.minRir == set.maxRir) " | RIR ${set.minRir}" else " | RIR ${set.minRir}-${set.maxRir}"
                                 } else ""
@@ -676,24 +538,39 @@ private fun HunterInventorySheet(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { onExerciseSetSelect(exercise, set) }
-                                        .padding(16.dp)
-                                        .background(HunterSurface.copy(alpha = 0.1f)),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                        .clickable {
+                                            selectedVariantIds = if (isSelected) selectedVariantIds - set.id else selectedVariantIds + set.id
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                        .background(if (isSelected) HunterPrimary.copy(alpha = 0.1f) else Color.Transparent),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(stringResource(R.string.day_slot_variant_prefix), style = MaterialTheme.typography.bodySmall, color = HunterTextSecondary)
+                                    Checkbox(
+                                        checked = isSelected,
+                                        onCheckedChange = null,
+                                        colors = CheckboxDefaults.colors(checkedColor = HunterPrimary, uncheckedColor = HunterTextSecondary)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
                                     Text(
                                         "${set.series}×$repsText @ ${set.weightKg}kg$rirText",
                                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
-                                        color = HunterPrimary
+                                        color = if (isSelected) HunterPrimary else HunterTextSecondary
                                     )
                                 }
-                                Divider(color = HunterPrimary.copy(alpha = 0.05f))
                             }
                         }
                     }
                 }
             }
+        }
+
+        if (expandedExerciseId != null && selectedVariantIds.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            HunterButton(
+                text = "Añadir ${selectedVariantIds.size} variantes",
+                onClick = { onAddExercises(expandedExerciseId!!, selectedVariantIds.toList()) },
+                color = HunterPrimary
+            )
         }
         Spacer(modifier = Modifier.height(32.dp))
     }
