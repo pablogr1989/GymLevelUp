@@ -1,12 +1,15 @@
 package com.gymlog.app.ui.screens.calendars
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,7 +35,7 @@ import com.gymlog.app.domain.model.MonthWithWeeks
 import com.gymlog.app.domain.model.WeekWithDays
 import com.gymlog.app.ui.theme.*
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarDetailScreen(
     onNavigateBack: () -> Unit,
@@ -41,12 +43,7 @@ fun CalendarDetailScreen(
     onNavigateToExercise: (String) -> Unit = {},
     viewModel: CalendarDetailViewModel = hiltViewModel()
 ) {
-    val calendarWithMonths by viewModel.calendarWithMonths.collectAsState()
-    val currentMonthIndex by viewModel.currentMonthIndex.collectAsState()
-    val isSelectionMode by viewModel.isSelectionMode.collectAsState()
-    val selectedDayIds by viewModel.selectedDayIds.collectAsState()
-    val showClearAllDialog by viewModel.showClearAllDialog.collectAsState()
-    val swapSourceDayId by viewModel.swapSourceDayId.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         containerColor = HunterBlack,
@@ -54,90 +51,76 @@ fun CalendarDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        calendarWithMonths?.calendar?.name?.uppercase() ?: stringResource(R.string.calendar_detail_default_title),
+                        uiState.calendarWithMonths?.calendar?.name?.uppercase() ?: stringResource(R.string.calendar_detail_default_title),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black)
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.common_back), tint = HunterTextPrimary)
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.common_back), tint = HunterTextPrimary)
                     }
                 },
                 actions = {
-                    if (!isSelectionMode && swapSourceDayId == null) {
+                    if (!uiState.isSelectionMode && uiState.toolAction == ToolAction.NONE) {
                         IconButton(onClick = viewModel::showClearAllDialog) {
-                            Icon(Icons.Default.CleaningServices, contentDescription = stringResource(R.string.calendar_detail_cd_clean), tint = HunterTextSecondary)
+                            Icon(Icons.Default.CleaningServices, stringResource(R.string.calendar_detail_cd_clean), tint = HunterTextSecondary)
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = HunterBlack,
-                    titleContentColor = HunterTextPrimary
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = HunterBlack)
             )
         },
         bottomBar = {
-            if (swapSourceDayId != null) {
-                // Barra de intercambio Hunter Style
-                Surface(
-                    color = HunterSurface,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = stringResource(R.string.calendar_detail_swap_prompt),
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                            color = ScreenColors.CalendarDetail.DaySwapSourceBorder
-                        )
-                        TextButton(onClick = viewModel::cancelSwap) {
-                            Text(stringResource(R.string.common_cancel), fontWeight = FontWeight.Bold, color = HunterTextPrimary)
-                        }
-                    }
-                }
-            } else if (isSelectionMode) {
+            if (uiState.toolAction != ToolAction.NONE) {
+                ActiveToolBar(
+                    uiState = uiState,
+                    onCancel = viewModel::cancelTool,
+                    onConfirmSource = viewModel::confirmSourceSelection,
+                    onApply = viewModel::executeTool
+                )
+            } else if (uiState.isSelectionMode) {
                 MultiSelectControls(
                     onMarkAll = viewModel::markSelectedAsCompleted,
                     onUnmarkAll = viewModel::clearSelectedCompleted,
                     onCancel = viewModel::clearSelection
                 )
+            } else {
+                ToolSelectionBar(onToolSelected = viewModel::startTool)
             }
         }
     ) { paddingValues ->
-        calendarWithMonths?.let { data ->
+        uiState.calendarWithMonths?.let { data ->
+            val currentMonth = data.months.getOrNull(uiState.currentMonthIndex)
+            val currentMonthId = currentMonth?.month?.id ?: ""
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
                 MonthNavigation(
-                    currentMonth = data.months.getOrNull(currentMonthIndex),
+                    currentMonth = currentMonth,
                     onPreviousMonth = { viewModel.changeMonth(-1) },
                     onNextMonth = { viewModel.changeMonth(1) },
-                    canGoNext = currentMonthIndex < data.months.size - 1,
-                    canGoPrevious = currentMonthIndex > 0
+                    canGoNext = uiState.currentMonthIndex < data.months.size - 1,
+                    canGoPrevious = uiState.currentMonthIndex > 0
                 )
 
                 DaysOfWeekHeader()
 
-                // GRID DE DÍAS
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    data.months.getOrNull(currentMonthIndex)?.let { monthWithWeeks ->
+                    currentMonth?.let { monthWithWeeks ->
                         items(monthWithWeeks.weeks) { weekWithDays ->
                             WeekRow(
                                 weekWithDays = weekWithDays,
-                                isSelectionMode = isSelectionMode,
-                                selectedDayIds = selectedDayIds,
-                                swapSourceDayId = swapSourceDayId,
+                                currentMonthId = currentMonthId,
+                                uiState = uiState,
                                 onDayClick = { daySlot ->
-                                    viewModel.onDayClick(daySlot.id) { id -> onNavigateToEdit(id) }
+                                    viewModel.onDayClick(daySlot.id, weekWithDays.week.id, currentMonthId) { id -> onNavigateToEdit(id) }
                                 },
                                 onDayLongPress = { daySlot -> viewModel.onDayLongPress(daySlot.id) }
                             )
@@ -148,7 +131,7 @@ fun CalendarDetailScreen(
         }
     }
 
-    if (showClearAllDialog) {
+    if (uiState.showClearAllDialog) {
         HunterConfirmDialog(
             title = stringResource(R.string.calendar_detail_dialog_reset_title),
             text = stringResource(R.string.calendar_detail_dialog_reset_text),
@@ -159,86 +142,145 @@ fun CalendarDetailScreen(
     }
 }
 
-@Composable
-private fun DaysOfWeekHeader() {
-    val days = listOf(
-        stringResource(R.string.day_mon_short),
-        stringResource(R.string.day_tue_short),
-        stringResource(R.string.day_wed_short),
-        stringResource(R.string.day_thu_short),
-        stringResource(R.string.day_fri_short),
-        stringResource(R.string.day_sat_short),
-        stringResource(R.string.day_sun_short)
-    )
+// --- BARRAS INFERIORES DE HERRAMIENTAS ---
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(HunterSurface)
-            .padding(vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        days.forEach { day ->
-            Text(
-                text = day,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = HunterPrimary,
-                modifier = Modifier.weight(1f),
-                textAlign = TextAlign.Center
-            )
+@Composable
+private fun ToolSelectionBar(onToolSelected: (ToolAction) -> Unit) {
+    Surface(color = HunterSurface, modifier = Modifier.fillMaxWidth()) {
+        LazyRow(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item { ToolChip("Mover Día", Icons.Default.SwapHoriz) { onToolSelected(ToolAction.MOVE_DAY) } }
+            item { ToolChip("Copiar Días", Icons.Default.ContentCopy) { onToolSelected(ToolAction.COPY_DAYS) } }
+            item { ToolChip("Mover Sem.", Icons.Default.LowPriority) { onToolSelected(ToolAction.MOVE_WEEK) } }
+            item { ToolChip("Copiar Sem.", Icons.Default.LibraryAdd) { onToolSelected(ToolAction.COPY_WEEKS) } }
+            item { ToolChip("Mover Mes", Icons.Default.Event) { onToolSelected(ToolAction.MOVE_MONTH) } }
+            item { ToolChip("Copiar Mes", Icons.Default.EventAvailable) { onToolSelected(ToolAction.COPY_MONTH) } }
         }
     }
 }
 
 @Composable
-private fun MonthNavigation(
-    currentMonth: MonthWithWeeks?,
-    onPreviousMonth: () -> Unit,
-    onNextMonth: () -> Unit,
-    canGoNext: Boolean,
-    canGoPrevious: Boolean
+private fun ToolChip(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onClick: () -> Unit) {
+    Surface(
+        color = HunterBlack,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, HunterPrimary.copy(alpha = 0.5f)),
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+        ) {
+            Icon(icon, null, tint = HunterPrimary, modifier = Modifier.size(16.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(text, color = HunterTextPrimary, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+        }
+    }
+}
+
+@Composable
+private fun ActiveToolBar(
+    uiState: CalendarUiState,
+    onCancel: () -> Unit,
+    onConfirmSource: () -> Unit,
+    onApply: () -> Unit
 ) {
+    Surface(color = HunterSurface, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                if (uiState.actionPhase == ActionPhase.SELECT_SOURCE) {
+                    Text("Seleccionar Origen", style = MaterialTheme.typography.labelLarge, color = HunterPrimary, fontWeight = FontWeight.Bold)
+                    Text("${uiState.sourceSelections.size} seleccionados", style = MaterialTheme.typography.labelSmall, color = HunterTextSecondary)
+                } else {
+                    Text("Seleccionar Destino", style = MaterialTheme.typography.labelLarge, color = HunterCyan, fontWeight = FontWeight.Bold)
+                    Text("${uiState.targetSelections.size} / ${uiState.sourceSelections.size}", style = MaterialTheme.typography.labelSmall, color = HunterTextSecondary)
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onCancel) {
+                    Text("Cancelar", color = HunterTextSecondary)
+                }
+
+                if (uiState.actionPhase == ActionPhase.SELECT_SOURCE && uiState.sourceSelections.isNotEmpty() && !uiState.toolAction.isMove) {
+                    Button(onClick = onConfirmSource, colors = ButtonDefaults.buttonColors(containerColor = HunterPrimary)) {
+                        Text("Siguiente", color = HunterBlack, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                if (uiState.actionPhase == ActionPhase.SELECT_TARGET && uiState.targetSelections.size == uiState.sourceSelections.size && !uiState.toolAction.isMove) {
+                    Button(onClick = onApply, colors = ButtonDefaults.buttonColors(containerColor = HunterCyan)) {
+                        Text("Aplicar", color = HunterBlack, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// --- RESTO DE LA UI ORIGINAL ---
+
+@Composable
+private fun DaysOfWeekHeader() {
+    val days = listOf("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxWidth().background(HunterSurface).padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        days.forEach { day ->
+            Text(day, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold), color = HunterPrimary, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
+private fun MonthNavigation(currentMonth: MonthWithWeeks?, onPreviousMonth: () -> Unit, onNextMonth: () -> Unit, canGoNext: Boolean, canGoPrevious: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onPreviousMonth, enabled = canGoPrevious) {
-            Icon(Icons.Default.ChevronLeft, null, tint = if (canGoPrevious) HunterTextPrimary else HunterTextSecondary.copy(alpha = 0.5f))
-        }
-
-        Text(
-            text = currentMonth?.month?.name?.uppercase() ?: "",
-            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black, letterSpacing = 2.sp),
-            color = HunterPrimary
-        )
-
-        IconButton(onClick = onNextMonth, enabled = canGoNext) {
-            Icon(Icons.Default.ChevronRight, null, tint = if (canGoNext) HunterTextPrimary else HunterTextSecondary.copy(alpha = 0.5f))
-        }
+        IconButton(onClick = onPreviousMonth, enabled = canGoPrevious) { Icon(Icons.Default.ChevronLeft, null, tint = if (canGoPrevious) HunterTextPrimary else HunterTextSecondary.copy(alpha = 0.5f)) }
+        Text(currentMonth?.month?.name?.uppercase() ?: "", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black, letterSpacing = 2.sp), color = HunterPrimary)
+        IconButton(onClick = onNextMonth, enabled = canGoNext) { Icon(Icons.Default.ChevronRight, null, tint = if (canGoNext) HunterTextPrimary else HunterTextSecondary.copy(alpha = 0.5f)) }
     }
 }
 
 @Composable
 private fun WeekRow(
     weekWithDays: WeekWithDays,
-    isSelectionMode: Boolean,
-    selectedDayIds: Set<String>,
-    swapSourceDayId: String?,
+    currentMonthId: String,
+    uiState: CalendarUiState,
     onDayClick: (DaySlot) -> Unit,
     onDayLongPress: (DaySlot) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         weekWithDays.days.forEach { daySlot ->
+
+            val selectionId = when (uiState.toolAction) {
+                ToolAction.MOVE_DAY, ToolAction.COPY_DAYS -> daySlot.id
+                ToolAction.MOVE_WEEK, ToolAction.COPY_WEEKS -> weekWithDays.week.id
+                ToolAction.MOVE_MONTH, ToolAction.COPY_MONTH -> currentMonthId
+                else -> daySlot.id
+            }
+
+            val isSource = uiState.toolAction != ToolAction.NONE && uiState.sourceSelections.contains(selectionId)
+            val isTarget = uiState.toolAction != ToolAction.NONE && uiState.actionPhase == ActionPhase.SELECT_TARGET && uiState.targetSelections.contains(selectionId)
+            val isClassicSelected = uiState.isSelectionMode && uiState.selectedDayIds.contains(daySlot.id)
+
             DayBox(
                 daySlot = daySlot,
-                isSelected = selectedDayIds.contains(daySlot.id),
-                isSwapSource = swapSourceDayId == daySlot.id,
+                isSelected = isClassicSelected,
+                isSource = isSource,
+                isTarget = isTarget,
                 onDayClick = onDayClick,
                 onDayLongPress = onDayLongPress,
                 modifier = Modifier.weight(1f)
@@ -252,27 +294,28 @@ private fun WeekRow(
 private fun DayBox(
     daySlot: DaySlot,
     isSelected: Boolean,
-    isSwapSource: Boolean,
+    isSource: Boolean,
+    isTarget: Boolean,
     onDayClick: (DaySlot) -> Unit,
     onDayLongPress: (DaySlot) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val category = daySlot.categories.firstOrNull()
 
-    // Colores y Bordes dinámicos usando ScreenColors
     val borderColor = when {
-        isSwapSource -> ScreenColors.CalendarDetail.DaySwapSourceBorder // Ámbar/Destacado
-        isSelected -> ScreenColors.CalendarDetail.DaySelectedBorder // Azul
-        daySlot.completed -> ScreenColors.CalendarDetail.DayCompletedIcon // Verde/RankB
-        else -> HunterPrimary.copy(alpha = 0.1f) // Normal
+        isTarget -> HunterCyan // Destino
+        isSource -> HunterSecondary // Origen (Ambar)
+        isSelected -> ScreenColors.CalendarDetail.DaySelectedBorder
+        daySlot.completed -> ScreenColors.CalendarDetail.DayCompletedIcon
+        else -> HunterPrimary.copy(alpha = 0.1f)
     }
 
     val backgroundColor = when {
-        daySlot.completed -> ScreenColors.CalendarDetail.DayCompletedBg // Fondo sutil verde
+        daySlot.completed && !isSource && !isTarget -> ScreenColors.CalendarDetail.DayCompletedBg
         else -> HunterSurface
     }
 
-    val glowModifier = if (isSwapSource || isSelected) {
+    val glowModifier = if (isSource || isTarget || isSelected) {
         Modifier.border(2.dp, borderColor, RoundedCornerShape(8.dp))
     } else {
         Modifier.border(1.dp, borderColor, RoundedCornerShape(8.dp))
@@ -291,49 +334,25 @@ private fun DayBox(
         contentAlignment = Alignment.Center
     ) {
         if (category != null) {
-            // Icono de categoría
             Icon(
                 painter = painterResource(id = getCategoryIcon(category)),
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = if (daySlot.completed) ScreenColors.CalendarDetail.DayCompletedIcon else HunterTextSecondary
+                tint = if (daySlot.completed && !isSource && !isTarget) ScreenColors.CalendarDetail.DayCompletedIcon else HunterTextSecondary
             )
         } else {
-            // Día vacío (Punto discreto)
-            Box(
-                modifier = Modifier
-                    .size(4.dp)
-                    .background(ScreenColors.CalendarDetail.DayEmptyDot, CircleShape)
-            )
+            Box(modifier = Modifier.size(4.dp).background(ScreenColors.CalendarDetail.DayEmptyDot, CircleShape))
         }
     }
 }
 
 @Composable
-private fun MultiSelectControls(
-    onMarkAll: () -> Unit,
-    onUnmarkAll: () -> Unit,
-    onCancel: () -> Unit
-) {
-    Surface(
-        color = ScreenColors.CalendarDetail.MultiSelectBarBg,
-        tonalElevation = 8.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            TextButton(onClick = onMarkAll) {
-                Text(stringResource(R.string.calendar_detail_btn_mark), color = HunterPrimary, fontWeight = FontWeight.Bold)
-            }
-            TextButton(onClick = onUnmarkAll) {
-                Text(stringResource(R.string.calendar_detail_btn_unmark), color = HunterSecondary)
-            }
-            TextButton(onClick = onCancel) {
-                Text(stringResource(R.string.calendar_detail_btn_ready), color = HunterTextPrimary)
-            }
+private fun MultiSelectControls(onMarkAll: () -> Unit, onUnmarkAll: () -> Unit, onCancel: () -> Unit) {
+    Surface(color = ScreenColors.CalendarDetail.MultiSelectBarBg, tonalElevation = 8.dp) {
+        Row(modifier = Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
+            TextButton(onClick = onMarkAll) { Text(stringResource(R.string.calendar_detail_btn_mark), color = HunterPrimary, fontWeight = FontWeight.Bold) }
+            TextButton(onClick = onUnmarkAll) { Text(stringResource(R.string.calendar_detail_btn_unmark), color = HunterSecondary) }
+            TextButton(onClick = onCancel) { Text(stringResource(R.string.calendar_detail_btn_ready), color = HunterTextPrimary) }
         }
     }
 }

@@ -21,79 +21,23 @@ class CalendarRepositoryImpl @Inject constructor(
     private val database: GymLogDatabase
 ) : CalendarRepository {
 
-    // --- Calendar Operations ---
+    override fun getAllCalendars(): Flow<List<Calendar>> { return calendarDao.getAllCalendars().map { entities -> entities.map { it.toDomainModel() } } }
+    override suspend fun getCalendarById(calendarId: String): Calendar? { return calendarDao.getCalendarById(calendarId)?.toDomainModel() }
+    override suspend fun insertCalendar(calendar: Calendar) { calendarDao.insertCalendar(calendar.toEntity()) }
+    override suspend fun updateCalendar(calendar: Calendar) { calendarDao.updateCalendar(calendar.toEntity()) }
+    override suspend fun deleteCalendar(calendar: Calendar) { calendarDao.deleteCalendar(calendar.toEntity()) }
 
-    override fun getAllCalendars(): Flow<List<Calendar>> {
-        return calendarDao.getAllCalendars().map { entities ->
-            entities.map { it.toDomainModel() }
-        }
-    }
+    override fun getMonthsForCalendar(calendarId: String): Flow<List<Month>> { return monthDao.getMonthsForCalendar(calendarId).map { entities -> entities.map { it.toDomainModel() } } }
+    override suspend fun getMonthById(monthId: String): Month? { return monthDao.getMonthById(monthId)?.toDomainModel() }
+    override suspend fun insertMonth(month: Month) { monthDao.insertMonth(month.toEntity()) }
+    override suspend fun updateMonth(month: Month) { monthDao.updateMonth(month.toEntity()) }
+    override suspend fun deleteMonth(month: Month) { monthDao.deleteMonth(month.toEntity()) }
 
-    override suspend fun getCalendarById(calendarId: String): Calendar? {
-        return calendarDao.getCalendarById(calendarId)?.toDomainModel()
-    }
-
-    override suspend fun insertCalendar(calendar: Calendar) {
-        calendarDao.insertCalendar(calendar.toEntity())
-    }
-
-    override suspend fun updateCalendar(calendar: Calendar) {
-        calendarDao.updateCalendar(calendar.toEntity())
-    }
-
-    override suspend fun deleteCalendar(calendar: Calendar) {
-        calendarDao.deleteCalendar(calendar.toEntity())
-    }
-
-    // --- Month Operations ---
-
-    override fun getMonthsForCalendar(calendarId: String): Flow<List<Month>> {
-        return monthDao.getMonthsForCalendar(calendarId).map { entities ->
-            entities.map { it.toDomainModel() }
-        }
-    }
-
-    override suspend fun getMonthById(monthId: String): Month? {
-        return monthDao.getMonthById(monthId)?.toDomainModel()
-    }
-
-    override suspend fun insertMonth(month: Month) {
-        monthDao.insertMonth(month.toEntity())
-    }
-
-    override suspend fun updateMonth(month: Month) {
-        monthDao.updateMonth(month.toEntity())
-    }
-
-    override suspend fun deleteMonth(month: Month) {
-        monthDao.deleteMonth(month.toEntity())
-    }
-
-    // --- Week Operations ---
-
-    override fun getWeeksForMonth(monthId: String): Flow<List<Week>> {
-        return weekDao.getWeeksForMonth(monthId).map { entities ->
-            entities.map { it.toDomainModel() }
-        }
-    }
-
-    override suspend fun getWeekById(weekId: String): Week? {
-        return weekDao.getWeekById(weekId)?.toDomainModel()
-    }
-
-    override suspend fun insertWeek(week: Week) {
-        weekDao.insertWeek(week.toEntity())
-    }
-
-    override suspend fun updateWeek(week: Week) {
-        weekDao.updateWeek(week.toEntity())
-    }
-
-    override suspend fun deleteWeek(week: Week) {
-        weekDao.deleteWeek(week.toEntity())
-    }
-
-    // --- DaySlot Operations (CLEANED UP) ---
+    override fun getWeeksForMonth(monthId: String): Flow<List<Week>> { return weekDao.getWeeksForMonth(monthId).map { entities -> entities.map { it.toDomainModel() } } }
+    override suspend fun getWeekById(weekId: String): Week? { return weekDao.getWeekById(weekId)?.toDomainModel() }
+    override suspend fun insertWeek(week: Week) { weekDao.insertWeek(week.toEntity()) }
+    override suspend fun updateWeek(week: Week) { weekDao.updateWeek(week.toEntity()) }
+    override suspend fun deleteWeek(week: Week) { weekDao.deleteWeek(week.toEntity()) }
 
     override fun getDaysForWeek(weekId: String): Flow<List<DaySlot>> {
         return daySlotDao.getDaysForWeek(weekId).map { entities ->
@@ -124,69 +68,103 @@ class CalendarRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun deleteDaySlot(daySlot: DaySlot) {
-        daySlotDao.deleteDaySlot(daySlot.toEntity())
-    }
+    override suspend fun deleteDaySlot(daySlot: DaySlot) { daySlotDao.deleteDaySlot(daySlot.toEntity()) }
+    override suspend fun updateDayCompleted(dayId: String, completed: Boolean) { daySlotDao.updateDayCompleted(dayId, completed) }
+    override suspend fun updateMultipleDaysCompleted(dayIds: List<String>, completed: Boolean) { daySlotDao.updateMultipleDaysCompleted(dayIds, completed) }
+    override suspend fun clearAllCompletedForCalendar(calendarId: String) { daySlotDao.clearAllCompletedForCalendar(calendarId) }
+    override suspend fun clearExerciseReferences(exerciseId: String) { daySlotDao.clearExerciseReferences(exerciseId) }
 
-    override suspend fun updateDayCompleted(dayId: String, completed: Boolean) {
-        daySlotDao.updateDayCompleted(dayId, completed)
-    }
-
-    override suspend fun updateMultipleDaysCompleted(dayIds: List<String>, completed: Boolean) {
-        daySlotDao.updateMultipleDaysCompleted(dayIds, completed)
-    }
-
-    override suspend fun clearAllCompletedForCalendar(calendarId: String) {
-        daySlotDao.clearAllCompletedForCalendar(calendarId)
-    }
-
-    override suspend fun clearExerciseReferences(exerciseId: String) {
-        daySlotDao.clearExerciseReferences(exerciseId)
-    }
+    // --- FUNCIONES DE CLONADO Y MOVIMIENTO ---
 
     override suspend fun swapDaySlots(daySlotId1: String, daySlotId2: String) {
         database.withTransaction {
             val day1 = daySlotDao.getDayById(daySlotId1)
             val day2 = daySlotDao.getDayById(daySlotId2)
-
             if (day1 != null && day2 != null) {
-                // 1. Obtener referencias
                 val refs1 = daySlotDao.getExercisesForDaySync(daySlotId1)
                 val refs2 = daySlotDao.getExercisesForDaySync(daySlotId2)
 
-                // 2. Intercambiar datos básicos
-                val updatedDay1 = day1.copy(
-                    categoryList = day2.categoryList,
-                    completed = day2.completed
-                )
-                val updatedDay2 = day2.copy(
-                    categoryList = day1.categoryList,
-                    completed = day1.completed
-                )
+                daySlotDao.updateDaySlot(day1.copy(categoryList = day2.categoryList, completed = day2.completed))
+                daySlotDao.updateDaySlot(day2.copy(categoryList = day1.categoryList, completed = day1.completed))
 
-                daySlotDao.updateDaySlot(updatedDay1)
-                daySlotDao.updateDaySlot(updatedDay2)
-
-                // 3. Intercambiar referencias
                 daySlotDao.clearExercisesForDay(daySlotId1)
                 daySlotDao.clearExercisesForDay(daySlotId2)
 
-                refs2.forEach { ref ->
-                    daySlotDao.insertDaySlotCrossRef(ref.copy(daySlotId = daySlotId1))
-                }
-                refs1.forEach { ref ->
-                    daySlotDao.insertDaySlotCrossRef(ref.copy(daySlotId = daySlotId2))
+                refs2.forEach { daySlotDao.insertDaySlotCrossRef(it.copy(daySlotId = daySlotId1)) }
+                refs1.forEach { daySlotDao.insertDaySlotCrossRef(it.copy(daySlotId = daySlotId2)) }
+            }
+        }
+    }
+
+    override suspend fun copyDaySlots(sourceIds: List<String>, targetIds: List<String>) {
+        database.withTransaction {
+            for (i in sourceIds.indices) {
+                val sourceDay = daySlotDao.getDayById(sourceIds[i])
+                val targetDay = daySlotDao.getDayById(targetIds[i])
+                if (sourceDay != null && targetDay != null) {
+
+                    // AQUÍ ESTÁ LA CORRECCIÓN: Ahora también copia el estado "completed"
+                    daySlotDao.updateDaySlot(targetDay.copy(
+                        categoryList = sourceDay.categoryList,
+                        completed = sourceDay.completed
+                    ))
+
+                    val sourceExercises = daySlotDao.getExercisesForDaySync(sourceIds[i])
+                    daySlotDao.clearExercisesForDay(targetIds[i])
+                    sourceExercises.forEach { ref ->
+                        daySlotDao.insertDaySlotCrossRef(ref.copy(daySlotId = targetIds[i]))
+                    }
                 }
             }
         }
     }
 
-    // --- Composite Operations ---
+    override suspend fun swapWeeks(weekId1: String, weekId2: String) {
+        database.withTransaction {
+            val days1 = daySlotDao.getDaysForWeek(weekId1).first().sortedBy { it.dayOfWeek.ordinal }
+            val days2 = daySlotDao.getDaysForWeek(weekId2).first().sortedBy { it.dayOfWeek.ordinal }
+            val size = minOf(days1.size, days2.size)
+            for (i in 0 until size) {
+                swapDaySlots(days1[i].id, days2[i].id)
+            }
+        }
+    }
 
+    override suspend fun copyWeeks(sourceWeekIds: List<String>, targetWeekIds: List<String>) {
+        database.withTransaction {
+            for (i in sourceWeekIds.indices) {
+                val days1 = daySlotDao.getDaysForWeek(sourceWeekIds[i]).first().sortedBy { it.dayOfWeek.ordinal }
+                val days2 = daySlotDao.getDaysForWeek(targetWeekIds[i]).first().sortedBy { it.dayOfWeek.ordinal }
+                val size = minOf(days1.size, days2.size)
+                copyDaySlots(days1.take(size).map { it.id }, days2.take(size).map { it.id })
+            }
+        }
+    }
+
+    override suspend fun swapMonths(monthId1: String, monthId2: String) {
+        database.withTransaction {
+            val weeks1 = weekDao.getWeeksForMonth(monthId1).first().sortedBy { it.weekNumber }
+            val weeks2 = weekDao.getWeeksForMonth(monthId2).first().sortedBy { it.weekNumber }
+            val size = minOf(weeks1.size, weeks2.size)
+            for (i in 0 until size) {
+                swapWeeks(weeks1[i].id, weeks2[i].id)
+            }
+        }
+    }
+
+    override suspend fun copyMonths(sourceMonthId: String, targetMonthId: String) {
+        database.withTransaction {
+            val weeks1 = weekDao.getWeeksForMonth(sourceMonthId).first().sortedBy { it.weekNumber }
+            val weeks2 = weekDao.getWeeksForMonth(targetMonthId).first().sortedBy { it.weekNumber }
+            val size = minOf(weeks1.size, weeks2.size)
+            copyWeeks(weeks1.take(size).map { it.id }, weeks2.take(size).map { it.id })
+        }
+    }
+
+    // --- Composite Operations ---
     override suspend fun getCalendarWithMonths(calendarId: String): CalendarWithMonths? {
         val calendar = calendarDao.getCalendarById(calendarId)?.toDomainModel() ?: return null
         val months = monthDao.getMonthsForCalendar(calendarId).first()
-
         val allCrossRefs = daySlotDao.getAllCrossRefs().groupBy { it.daySlotId }
 
         val monthsWithWeeks = months.map { monthEntity ->
@@ -203,20 +181,16 @@ class CalendarRepositoryImpl @Inject constructor(
             }
             MonthWithWeeks(month, weeksWithDays)
         }
-
         return CalendarWithMonths(calendar, monthsWithWeeks)
     }
 
     override fun getCalendarWithMonthsFlow(calendarId: String): Flow<CalendarWithMonths?> {
-        return daySlotDao.getDaysForCalendar(calendarId).map { _ ->
-            getCalendarWithMonths(calendarId)
-        }
+        return daySlotDao.getDaysForCalendar(calendarId).map { _ -> getCalendarWithMonths(calendarId) }
     }
 
     override suspend fun getMonthWithWeeks(monthId: String): MonthWithWeeks? {
         val month = monthDao.getMonthById(monthId)?.toDomainModel() ?: return null
         val weeks = weekDao.getWeeksForMonth(monthId).first()
-
         val weeksWithDays = weeks.map { weekEntity ->
             val week = weekEntity.toDomainModel()
             val days = daySlotDao.getDaysForWeek(week.id).first().map { entity ->
@@ -237,65 +211,29 @@ class CalendarRepositoryImpl @Inject constructor(
         return WeekWithDays(week, days)
     }
 
-    // --- Helpers ---
-
     private suspend fun saveDaySlotExercises(daySlotId: String, assignments: List<TrainingAssignment>) {
         daySlotDao.clearExercisesForDay(daySlotId)
         assignments.forEachIndexed { index, assignment ->
             daySlotDao.insertDaySlotCrossRef(
-                DaySlotExerciseCrossRef(
-                    daySlotId = daySlotId,
-                    exerciseId = assignment.exerciseId,
-                    targetSetId = assignment.targetSetId,
-                    orderIndex = index
-                )
+                DaySlotExerciseCrossRef(daySlotId, assignment.exerciseId, assignment.targetSetId, index)
             )
         }
     }
 
-    // --- Mappers ---
-
     private fun CalendarEntity.toDomainModel() = Calendar(id, name, createdAt)
     private fun Calendar.toEntity() = CalendarEntity(id, name, createdAt)
-
     private fun MonthEntity.toDomainModel() = Month(id, calendarId, name, monthNumber)
     private fun Month.toEntity() = MonthEntity(id, calendarId, name, monthNumber)
-
     private fun WeekEntity.toDomainModel() = Week(id, monthId, weekNumber)
     private fun Week.toEntity() = WeekEntity(id, monthId, weekNumber)
-
     private fun DaySlotEntity.toDomainModel(crossRefs: List<DaySlotExerciseCrossRef> = emptyList()): DaySlot {
-        // Mapeo limpio: Entidad -> Modelo de Dominio
-        val assignments = crossRefs
-            .sortedBy { it.orderIndex }
-            .map { TrainingAssignment(it.exerciseId, it.targetSetId) }
-
-        return DaySlot(
-            id = id,
-            weekId = weekId,
-            dayOfWeek = dayOfWeek,
-            categories = parseCategoryList(categoryList),
-            exercises = assignments, // Ahora pasamos objetos puros
-            completed = completed
-        )
+        val assignments = crossRefs.sortedBy { it.orderIndex }.map { TrainingAssignment(it.exerciseId, it.targetSetId) }
+        return DaySlot(id, weekId, dayOfWeek, parseCategoryList(categoryList), assignments, completed)
     }
-
-    private fun DaySlot.toEntity() = DaySlotEntity(
-        id = id,
-        weekId = weekId,
-        dayOfWeek = dayOfWeek,
-        categoryList = serializeCategoryList(categories),
-        completed = completed
-    )
-
+    private fun DaySlot.toEntity() = DaySlotEntity(id, weekId, dayOfWeek, serializeCategoryList(categories), completed)
     private fun parseCategoryList(categoryList: String): List<DayCategory> {
         if (categoryList.isEmpty()) return emptyList()
-        return categoryList.split(",").mapNotNull {
-            try { DayCategory.valueOf(it.trim()) } catch (e: Exception) { null }
-        }
+        return categoryList.split(",").mapNotNull { try { DayCategory.valueOf(it.trim()) } catch (e: Exception) { null } }
     }
-
-    private fun serializeCategoryList(categories: List<DayCategory>): String {
-        return categories.joinToString(",") { it.name }
-    }
+    private fun serializeCategoryList(categories: List<DayCategory>): String { return categories.joinToString(",") { it.name } }
 }
