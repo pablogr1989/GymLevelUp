@@ -99,4 +99,7 @@ dependencies {
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    // Exportar imagenes
+    implementation("androidx.documentfile:documentfile:1.0.1")
 }

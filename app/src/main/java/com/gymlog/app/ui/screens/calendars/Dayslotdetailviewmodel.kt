@@ -53,6 +53,10 @@ class DaySlotDetailViewModel @Inject constructor(
     private val _filteredExercises = MutableStateFlow<List<Exercise>>(emptyList())
     val filteredExercises = _filteredExercises.asStateFlow()
 
+    // NUEVO: Estado para saber qué asignación estamos editando al dejar pulsado
+    private val _editingAssignmentItem = MutableStateFlow<ExerciseWithSelectedSets?>(null)
+    val editingAssignmentItem = _editingAssignmentItem.asStateFlow()
+
     val selectedExercisesWithSets = _uiState.map { state ->
         val currentDaySlot = state.daySlot ?: return@map emptyList()
         val allExercises = exerciseRepository.getAllExercises().first()
@@ -61,13 +65,9 @@ class DaySlotDetailViewModel @Inject constructor(
         state.currentAssignments.mapNotNull { assignment ->
             val exercise = exerciseMap[assignment.exerciseId]
             if (exercise != null) {
-                // Leemos los IDs de las variantes
                 val setIds = assignment.targetSetId?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
                 var selectedSets = setIds.mapNotNull { id -> exercise.sets.find { it.id == id } }
 
-                // LÓGICA DE RESCATE (FALLBACK):
-                // Si un ejercicio antiguo no tiene variantes asignadas (targetSetId == null),
-                // pero el ejercicio tiene variantes creadas, cogemos automáticamente la primera.
                 if (selectedSets.isEmpty() && exercise.sets.isNotEmpty()) {
                     selectedSets = listOf(exercise.sets.first())
                 }
@@ -159,6 +159,36 @@ class DaySlotDetailViewModel @Inject constructor(
             state.copy(currentAssignments = newList)
         }
     }
+
+    // --- NUEVAS FUNCIONES PARA EDITAR SERIES DE UN EJERCICIO ---
+
+    fun startEditingAssignment(item: ExerciseWithSelectedSets) {
+        _editingAssignmentItem.value = item
+    }
+
+    fun cancelEditingAssignment() {
+        _editingAssignmentItem.value = null
+    }
+
+    fun updateAssignmentSets(assignment: TrainingAssignment, newSetIds: List<String>) {
+        _uiState.update { state ->
+            val newList = state.currentAssignments.map {
+                if (it === assignment) {
+                    it.copy(targetSetId = newSetIds.joinToString(","))
+                } else {
+                    it
+                }
+            }
+            state.copy(currentAssignments = newList)
+        }
+        _editingAssignmentItem.value = null
+    }
+
+    fun confirmRemoveAssignment(assignment: TrainingAssignment) {
+        removeExercise(assignment)
+        _editingAssignmentItem.value = null
+    }
+    // -------------------------------------------------------------
 
     fun saveDaySlot() {
         viewModelScope.launch {

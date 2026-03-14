@@ -114,8 +114,10 @@ fun EditExerciseScreen(
                         AsyncImage(
                             model = imageUri,
                             contentDescription = null,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.White),
+                            contentScale = ContentScale.Fit
                         )
 
                         Box(

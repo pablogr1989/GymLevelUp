@@ -1,9 +1,11 @@
 package com.gymlog.app.ui.screens.calendars
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -56,6 +58,9 @@ fun DaySlotDetailScreen(
     val navigateToTraining by viewModel.navigateToTraining.collectAsState()
     val isCategoriesExpanded by viewModel.isCategoriesExpanded.collectAsState()
     val isExercisesExpanded by viewModel.isExercisesExpanded.collectAsState()
+
+    // Estado de Edición
+    val editingAssignmentItem by viewModel.editingAssignmentItem.collectAsState()
 
     var showBottomSheet by remember { mutableStateOf(false) }
     val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -139,6 +144,7 @@ fun DaySlotDetailScreen(
                         isCardioOrRest = selectedCategories.all { it == DayCategory.CARDIO || it == DayCategory.REST },
                         onAddExercise = { showBottomSheet = true },
                         onExerciseClick = onNavigateToExercise,
+                        onExerciseLongClick = viewModel::startEditingAssignment, // NUEVO
                         onRemoveExercise = viewModel::removeExercise,
                         onMoveExercise = viewModel::moveExercise
                     )
@@ -155,6 +161,7 @@ fun DaySlotDetailScreen(
         }
     }
 
+    // Modal para Añadir Nuevo Ejercicio
     if (showBottomSheet) {
         ModalBottomSheet(
             onDismissRequest = { showBottomSheet = false },
@@ -169,6 +176,27 @@ fun DaySlotDetailScreen(
                     showBottomSheet = false
                 },
                 onDismiss = { showBottomSheet = false }
+            )
+        }
+    }
+
+    // Modal para Editar las Series de un Ejercicio ya asignado
+    if (editingAssignmentItem != null) {
+        ModalBottomSheet(
+            onDismissRequest = viewModel::cancelEditingAssignment,
+            sheetState = bottomSheetState,
+            containerColor = HunterSurface,
+            contentColor = HunterTextPrimary
+        ) {
+            HunterEditAssignmentSheet(
+                item = editingAssignmentItem!!,
+                onSave = { newSets ->
+                    viewModel.updateAssignmentSets(editingAssignmentItem!!.assignment, newSets)
+                },
+                onRemove = {
+                    viewModel.confirmRemoveAssignment(editingAssignmentItem!!.assignment)
+                },
+                onDismiss = viewModel::cancelEditingAssignment
             )
         }
     }
@@ -273,6 +301,7 @@ private fun LoadoutContent(
     isCardioOrRest: Boolean,
     onAddExercise: () -> Unit,
     onExerciseClick: (String) -> Unit,
+    onExerciseLongClick: (ExerciseWithSelectedSets) -> Unit,
     onRemoveExercise: (TrainingAssignment) -> Unit,
     onMoveExercise: (Int, Int) -> Unit
 ) {
@@ -285,6 +314,7 @@ private fun LoadoutContent(
                     DraggableLoadoutList(
                         items = exercisesWithSets,
                         onExerciseClick = onExerciseClick,
+                        onExerciseLongClick = onExerciseLongClick, // Pasamos el long click
                         onRemoveExercise = onRemoveExercise,
                         onMoveExercise = onMoveExercise
                     )
@@ -318,6 +348,7 @@ private fun LoadoutContent(
 private fun DraggableLoadoutList(
     items: List<ExerciseWithSelectedSets>,
     onExerciseClick: (String) -> Unit,
+    onExerciseLongClick: (ExerciseWithSelectedSets) -> Unit,
     onRemoveExercise: (TrainingAssignment) -> Unit,
     onMoveExercise: (Int, Int) -> Unit
 ) {
@@ -334,6 +365,7 @@ private fun DraggableLoadoutList(
                 isDragged = draggedIndex == index,
                 isDraggedOver = targetIndex == index,
                 onClick = { onExerciseClick(item.exercise.id) },
+                onLongClick = { onExerciseLongClick(item) }, // Recibimos el long click
                 onRemove = { onRemoveExercise(item.assignment) },
                 onDragStart = { positionY -> draggedIndex = index; targetIndex = index; currentDragY = positionY },
                 onDragEnd = {
@@ -362,7 +394,7 @@ private fun DraggableLoadoutList(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HunterDraggableCard(
     item: ExerciseWithSelectedSets,
@@ -370,6 +402,7 @@ private fun HunterDraggableCard(
     isDragged: Boolean,
     isDraggedOver: Boolean,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
     onRemove: () -> Unit,
     onDragStart: (Float) -> Unit,
     onDragEnd: () -> Unit,
@@ -421,7 +454,15 @@ private fun HunterDraggableCard(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            Column(modifier = Modifier.weight(1f).clickable { onClick() }) {
+            // APLICAMOS COMBINED CLICKABLE PARA DETECTAR PULSACIÓN LARGA
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .combinedClickable(
+                        onClick = onClick,
+                        onLongClick = onLongClick
+                    )
+            ) {
                 Text(
                     text = item.exercise.name.uppercase(),
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
@@ -460,13 +501,113 @@ private fun HunterDraggableCard(
     }
 }
 
+// === NUEVO MODAL DE EDICIÓN ===
+@Composable
+private fun HunterEditAssignmentSheet(
+    item: ExerciseWithSelectedSets,
+    onSave: (List<String>) -> Unit,
+    onRemove: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var selectedVariantIds by remember { mutableStateOf(item.selectedSets.map { it.id }.toSet()) }
+    var showWarning by remember { mutableStateOf(false) }
+
+    if (showWarning) {
+        AlertDialog(
+            onDismissRequest = { showWarning = false },
+            containerColor = HunterSurface,
+            title = { Text("¿Eliminar Ejercicio?", color = HunterTextPrimary, fontWeight = FontWeight.Bold) },
+            text = { Text("Has desmarcado todas las variantes. Si guardas, el ejercicio se eliminará de este día.", color = HunterTextSecondary) },
+            confirmButton = {
+                Button(onClick = { showWarning = false; onRemove() }, colors = ButtonDefaults.buttonColors(containerColor = ScreenColors.Global.ErrorRed)) {
+                    Text("Eliminar", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showWarning = false }) { Text("Cancelar", color = HunterTextPrimary) }
+            }
+        )
+    }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Modificar Variantes", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black), color = HunterTextPrimary)
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Default.Close, stringResource(R.string.common_close), tint = HunterTextPrimary)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(item.exercise.name.uppercase(), style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold), color = HunterPrimary)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (item.exercise.sets.isEmpty()) {
+            Text("Este ejercicio no tiene variantes creadas.", color = HunterTextSecondary)
+        }
+
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.weight(1f, fill = false).heightIn(max = 400.dp)
+        ) {
+            itemsIndexed(item.exercise.sets) { _, set ->
+                val isSelected = selectedVariantIds.contains(set.id)
+                val repsText = if (set.minReps == set.maxReps) "${set.minReps}" else "${set.minReps}-${set.maxReps}"
+                val rirText = if (set.minRir != null && set.maxRir != null) {
+                    if (set.minRir == set.maxRir) " | RIR ${set.minRir}" else " | RIR ${set.minRir}-${set.maxRir}"
+                } else ""
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isSelected) HunterPrimary.copy(alpha = 0.15f) else HunterBlack)
+                        .border(1.dp, if (isSelected) HunterPrimary else HunterPrimary.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                        .clickable {
+                            selectedVariantIds = if (isSelected) selectedVariantIds - set.id else selectedVariantIds + set.id
+                        }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = null,
+                        colors = CheckboxDefaults.colors(checkedColor = HunterPrimary, uncheckedColor = HunterTextSecondary)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        "${set.series}×$repsText @ ${set.weightKg}kg$rirText",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                        color = if (isSelected) HunterPrimary else HunterTextSecondary
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        HunterButton(
+            text = "Guardar Cambios",
+            onClick = {
+                if (selectedVariantIds.isEmpty()) showWarning = true
+                else onSave(selectedVariantIds.toList())
+            },
+            color = HunterPrimary
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+// === MODAL DE INVENTARIO (ORIGINAL) ===
 @Composable
 private fun HunterInventorySheet(
     exercises: List<Exercise>,
     onAddExercises: (String, List<String>) -> Unit,
     onDismiss: () -> Unit
 ) {
-    // Controlamos el ejercicio desplegado y las variantes marcadas dentro de él
     var expandedExerciseId by remember { mutableStateOf<String?>(null) }
     var selectedVariantIds by remember { mutableStateOf(setOf<String>()) }
 

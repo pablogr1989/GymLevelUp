@@ -336,7 +336,7 @@ private fun HunterActiveExerciseHUD(
                     Text(text = stringResource(UiMappers.getDisplayNameRes(exercise.muscleGroup)).uppercase(), style = MaterialTheme.typography.labelMedium, color = ScreenColors.TrainingMode.HudMuscleGroup)
                     Spacer(modifier = Modifier.height(12.dp))
                     Box(modifier = Modifier.fillMaxWidth().height(200.dp).clip(RoundedCornerShape(12.dp)).border(1.dp, ScreenColors.TrainingMode.HudImageBorder, RoundedCornerShape(12.dp))) {
-                        AsyncImage(model = exercise.imageUri, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        AsyncImage(model = exercise.imageUri, contentDescription = null, modifier = Modifier.fillMaxSize().background(Color.White), contentScale = ContentScale.Fit)
                     }
                 }
             } else {

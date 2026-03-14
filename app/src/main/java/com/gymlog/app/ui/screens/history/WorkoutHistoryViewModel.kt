@@ -43,7 +43,7 @@ class WorkoutHistoryViewModel @Inject constructor(
     private val _daySlotHierarchies = MutableStateFlow<Map<String, DaySlotHierarchy>>(emptyMap())
     val daySlotHierarchies = _daySlotHierarchies.asStateFlow()
 
-    // Agrupamos el historial por DaySlotId
+    // NUEVO: Agrupamos el historial primero por DaySlotId y luego por ExerciseId
     val groupedHistory = combine(allExercises, allHistory) { exercises, historyList ->
         val exerciseMap = exercises.associateBy { it.id }
 
@@ -61,7 +61,9 @@ class WorkoutHistoryViewModel @Inject constructor(
             )
         }
 
+        // Doble agrupación: { DaySlotId -> { ExerciseId -> List<HistoryItemUi> } }
         uiItems.groupBy { it.history.daySlotId }
+            .mapValues { (_, items) -> items.groupBy { it.history.exerciseId } }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
 
     private val _selectedIds = MutableStateFlow<Set<String>>(emptySet())
@@ -70,9 +72,13 @@ class WorkoutHistoryViewModel @Inject constructor(
     private val _editingItem = MutableStateFlow<HistoryItemUi?>(null)
     val editingItem = _editingItem.asStateFlow()
 
-    // NUEVO: Control de grupos expandidos (Desplegables)
+    // Control del primer nivel de desplegables (Días)
     private val _expandedGroups = MutableStateFlow<Set<String>>(emptySet())
     val expandedGroups = _expandedGroups.asStateFlow()
+
+    // NUEVO: Control del segundo nivel de desplegables (Ejercicios)
+    private val _expandedExercises = MutableStateFlow<Set<String>>(emptySet())
+    val expandedExercises = _expandedExercises.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -109,10 +115,17 @@ class WorkoutHistoryViewModel @Inject constructor(
         }
     }
 
-    // NUEVO: Función para abrir/cerrar un desplegable
     fun toggleGroup(daySlotId: String) {
         _expandedGroups.update { current ->
             if (current.contains(daySlotId)) current - daySlotId else current + daySlotId
+        }
+    }
+
+    // NUEVO: Función para abrir/cerrar un ejercicio específico dentro de un día
+    fun toggleExerciseGroup(daySlotId: String, exerciseId: String) {
+        val key = "${daySlotId}_${exerciseId}"
+        _expandedExercises.update { current ->
+            if (current.contains(key)) current - key else current + key
         }
     }
 

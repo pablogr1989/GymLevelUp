@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -35,14 +36,16 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun WorkoutHistoryScreen(
-    onNavigateToExport: () -> Unit, // RECIBE LA ACCIÓN DE NAVEGACIÓN
+    onNavigateToExport: () -> Unit,
     viewModel: WorkoutHistoryViewModel = hiltViewModel()
 ) {
     val groupedHistory by viewModel.groupedHistory.collectAsState()
     val daySlotHierarchies by viewModel.daySlotHierarchies.collectAsState()
     val selectedIds by viewModel.selectedIds.collectAsState()
     val editingItem by viewModel.editingItem.collectAsState()
+
     val expandedGroups by viewModel.expandedGroups.collectAsState()
+    val expandedExercises by viewModel.expandedExercises.collectAsState() // NUEVO ESTADO
 
     val isSelectionMode = selectedIds.isNotEmpty()
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy - HH:mm", Locale.getDefault()) }
@@ -78,7 +81,6 @@ fun WorkoutHistoryScreen(
                             Icon(Icons.Default.Delete, "Eliminar", tint = ScreenColors.Global.ErrorRed)
                         }
                     } else {
-                        // NUEVO BOTÓN DE EXPORTAR (Estilo MainScreen)
                         IconButton(
                             onClick = onNavigateToExport,
                             modifier = Modifier
@@ -108,11 +110,13 @@ fun WorkoutHistoryScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                groupedHistory.forEach { (daySlotId, items) ->
+                // DOBLE BUCLE: Días -> Ejercicios -> Series
+                groupedHistory.forEach { (daySlotId, exercisesMap) ->
                     val hierarchy = daySlotHierarchies[daySlotId]
-                    val isExpanded = expandedGroups.contains(daySlotId)
+                    val isDayExpanded = expandedGroups.contains(daySlotId)
 
                     item {
+                        // NIVEL 1: CABECERA DEL DÍA
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -146,8 +150,8 @@ fun WorkoutHistoryScreen(
                                 }
 
                                 Icon(
-                                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                    contentDescription = if (isExpanded) "Ocultar" else "Mostrar",
+                                    imageVector = if (isDayExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                    contentDescription = if (isDayExpanded) "Ocultar" else "Mostrar",
                                     tint = HunterPrimary
                                 )
                             }
@@ -155,87 +159,126 @@ fun WorkoutHistoryScreen(
                         }
                     }
 
-                    if (isExpanded) {
-                        items(items, key = { it.history.id }) { item ->
-                            val isSelected = selectedIds.contains(item.history.id)
+                    if (isDayExpanded) {
+                        exercisesMap.forEach { (exerciseId, sets) ->
+                            val exKey = "${daySlotId}_${exerciseId}"
+                            val isExExpanded = expandedExercises.contains(exKey)
+                            val exerciseName = sets.firstOrNull()?.exerciseName ?: "Ejercicio"
 
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 8.dp)
-                                    .combinedClickable(
-                                        onClick = {
-                                            if (isSelectionMode) viewModel.toggleSelection(item.history.id)
-                                            else viewModel.startEditing(item)
-                                        },
-                                        onLongClick = { viewModel.toggleSelection(item.history.id) }
-                                    ),
-                                colors = CardDefaults.cardColors(containerColor = if (isSelected) HunterPrimary.copy(alpha = 0.2f) else HunterSurface),
-                                border = BorderStroke(1.dp, if (isSelected) HunterPrimary else HunterPrimary.copy(alpha = 0.2f)),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Column(modifier = Modifier.padding(16.dp)) {
+                            item {
+                                // NIVEL 2: CABECERA DEL EJERCICIO
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 16.dp, bottom = 8.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(HunterSurface)
+                                        .border(1.dp, HunterPrimary.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
+                                        .clickable { viewModel.toggleExerciseGroup(daySlotId, exerciseId) }
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
                                     Text(
-                                        text = dateFormat.format(Date(item.history.timestamp)),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = HunterTextSecondary.copy(alpha = 0.7f),
-                                        modifier = Modifier.padding(bottom = 8.dp)
+                                        text = exerciseName.uppercase(),
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = HunterTextPrimary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
                                     )
 
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
-                                            text = item.exerciseName.uppercase(),
-                                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                            color = HunterTextPrimary,
-                                            modifier = Modifier.weight(1f),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                            text = "${sets.size} series",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = HunterTextSecondary
                                         )
-                                        Text(
-                                            text = "Serie ${item.history.seriesNumber}",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = HunterPrimary
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Icon(
+                                            imageVector = if (isExExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                            contentDescription = null,
+                                            tint = HunterPrimary,
+                                            modifier = Modifier.size(20.dp)
                                         )
                                     }
+                                }
+                            }
 
-                                    Spacer(modifier = Modifier.height(8.dp))
+                            if (isExExpanded) {
+                                items(sets, key = { it.history.id }) { item ->
+                                    val isSelected = selectedIds.contains(item.history.id)
 
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    // NIVEL 3: TARJETA DE LA SERIE
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(start = 32.dp, bottom = 8.dp) // Mayor indentación para anidar
+                                            .combinedClickable(
+                                                onClick = {
+                                                    if (isSelectionMode) viewModel.toggleSelection(item.history.id)
+                                                    else viewModel.startEditing(item)
+                                                },
+                                                onLongClick = { viewModel.toggleSelection(item.history.id) }
+                                            ),
+                                        colors = CardDefaults.cardColors(containerColor = if (isSelected) HunterPrimary.copy(alpha = 0.2f) else HunterBlack),
+                                        border = BorderStroke(1.dp, if (isSelected) HunterPrimary else HunterPrimary.copy(alpha = 0.1f)),
+                                        shape = RoundedCornerShape(12.dp)
                                     ) {
-                                        Column {
-                                            val targetReps = if (item.targetMinReps == item.targetMaxReps) "${item.targetMinReps}" else "${item.targetMinReps}-${item.targetMaxReps}"
-                                            val targetRir = if (item.targetMinRir != null && item.targetMaxRir != null) {
-                                                if (item.targetMinRir == item.targetMaxRir) "RIR ${item.targetMinRir}" else "RIR ${item.targetMinRir}-${item.targetMaxRir}"
-                                            } else "Sin RIR"
+                                        Column(modifier = Modifier.padding(16.dp)) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = "Serie ${item.history.seriesNumber}",
+                                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
+                                                    color = HunterPrimary
+                                                )
+                                                Text(
+                                                    text = dateFormat.format(Date(item.history.timestamp)),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = HunterTextSecondary.copy(alpha = 0.7f)
+                                                )
+                                            }
 
-                                            Text("Objetivo", style = MaterialTheme.typography.labelSmall, color = HunterTextSecondary)
-                                            Text("$targetReps reps | $targetRir", style = MaterialTheme.typography.bodySmall, color = HunterTextPrimary)
+                                            Spacer(modifier = Modifier.height(12.dp))
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Column {
+                                                    val targetReps = if (item.targetMinReps == item.targetMaxReps) "${item.targetMinReps}" else "${item.targetMinReps}-${item.targetMaxReps}"
+                                                    val targetRir = if (item.targetMinRir != null && item.targetMaxRir != null) {
+                                                        if (item.targetMinRir == item.targetMaxRir) "RIR ${item.targetMinRir}" else "RIR ${item.targetMinRir}-${item.targetMaxRir}"
+                                                    } else "Sin RIR"
+
+                                                    Text("Objetivo", style = MaterialTheme.typography.labelSmall, color = HunterTextSecondary)
+                                                    Text("$targetReps reps | $targetRir", style = MaterialTheme.typography.bodySmall, color = HunterTextPrimary)
+                                                }
+
+                                                Column(horizontalAlignment = Alignment.End) {
+                                                    Text("Logrado", style = MaterialTheme.typography.labelSmall, color = HunterTextSecondary)
+                                                    val rirLogrado = item.history.rir?.let { " | RIR $it" } ?: ""
+                                                    Text(
+                                                        "${item.history.reps} reps @ ${item.history.weightKg} kg$rirLogrado",
+                                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                                        color = HunterPrimary
+                                                    )
+                                                }
+                                            }
+
+                                            if (item.history.notes.isNotBlank()) {
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Text(
+                                                    text = "Obs: ${item.history.notes}",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = HunterTextSecondary.copy(alpha = 0.8f)
+                                                )
+                                            }
                                         }
-
-                                        Column(horizontalAlignment = Alignment.End) {
-                                            Text("Logrado", style = MaterialTheme.typography.labelSmall, color = HunterTextSecondary)
-                                            val rirLogrado = item.history.rir?.let { " | RIR $it" } ?: ""
-                                            Text(
-                                                "${item.history.reps} reps @ ${item.history.weightKg} kg$rirLogrado",
-                                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                                color = HunterPrimary
-                                            )
-                                        }
-                                    }
-
-                                    if (item.history.notes.isNotBlank()) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = "Obs: ${item.history.notes}",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = HunterTextSecondary.copy(alpha = 0.8f)
-                                        )
                                     }
                                 }
                             }
