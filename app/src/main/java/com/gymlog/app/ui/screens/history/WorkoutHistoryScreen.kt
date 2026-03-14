@@ -9,6 +9,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -34,13 +35,14 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun WorkoutHistoryScreen(
+    onNavigateToExport: () -> Unit, // RECIBE LA ACCIÓN DE NAVEGACIÓN
     viewModel: WorkoutHistoryViewModel = hiltViewModel()
 ) {
     val groupedHistory by viewModel.groupedHistory.collectAsState()
     val daySlotHierarchies by viewModel.daySlotHierarchies.collectAsState()
     val selectedIds by viewModel.selectedIds.collectAsState()
     val editingItem by viewModel.editingItem.collectAsState()
-    val expandedGroups by viewModel.expandedGroups.collectAsState() // NUEVO ESTADO
+    val expandedGroups by viewModel.expandedGroups.collectAsState()
 
     val isSelectionMode = selectedIds.isNotEmpty()
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy - HH:mm", Locale.getDefault()) }
@@ -75,6 +77,21 @@ fun WorkoutHistoryScreen(
                         IconButton(onClick = viewModel::deleteSelected) {
                             Icon(Icons.Default.Delete, "Eliminar", tint = ScreenColors.Global.ErrorRed)
                         }
+                    } else {
+                        // NUEVO BOTÓN DE EXPORTAR (Estilo MainScreen)
+                        IconButton(
+                            onClick = onNavigateToExport,
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .clip(CircleShape)
+                                .background(HunterSurface)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FileUpload,
+                                contentDescription = "Exportar Historial",
+                                tint = HunterPrimary
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = HunterBlack, titleContentColor = HunterTextPrimary)
@@ -96,7 +113,6 @@ fun WorkoutHistoryScreen(
                     val isExpanded = expandedGroups.contains(daySlotId)
 
                     item {
-                        // CABECERA DESPLEGABLE
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -129,7 +145,6 @@ fun WorkoutHistoryScreen(
                                     }
                                 }
 
-                                // ICONO DE FLECHA
                                 Icon(
                                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                                     contentDescription = if (isExpanded) "Ocultar" else "Mostrar",
@@ -140,7 +155,6 @@ fun WorkoutHistoryScreen(
                         }
                     }
 
-                    // SOLO MUESTRA LOS ITEMS SI ESTÁ EXPANDIDO
                     if (isExpanded) {
                         items(items, key = { it.history.id }) { item ->
                             val isSelected = selectedIds.contains(item.history.id)
@@ -148,7 +162,7 @@ fun WorkoutHistoryScreen(
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(bottom = 8.dp) // Separación extra dentro del grupo
+                                    .padding(bottom = 8.dp)
                                     .combinedClickable(
                                         onClick = {
                                             if (isSelectionMode) viewModel.toggleSelection(item.history.id)
@@ -156,9 +170,7 @@ fun WorkoutHistoryScreen(
                                         },
                                         onLongClick = { viewModel.toggleSelection(item.history.id) }
                                     ),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (isSelected) HunterPrimary.copy(alpha = 0.2f) else HunterSurface
-                                ),
+                                colors = CardDefaults.cardColors(containerColor = if (isSelected) HunterPrimary.copy(alpha = 0.2f) else HunterSurface),
                                 border = BorderStroke(1.dp, if (isSelected) HunterPrimary else HunterPrimary.copy(alpha = 0.2f)),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
@@ -259,63 +271,34 @@ fun EditHistoryDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = HunterSurface,
-        title = {
-            Text("Editar Serie ${item.history.seriesNumber}", color = HunterTextPrimary, fontWeight = FontWeight.Bold)
-        },
+        title = { Text("Editar Serie ${item.history.seriesNumber}", color = HunterTextPrimary, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(item.exerciseName, color = HunterPrimary, style = MaterialTheme.typography.bodyMedium)
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        value = weight,
-                        onValueChange = { weight = it },
-                        label = { Text("Peso") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = HunterTextPrimary, unfocusedTextColor = HunterTextPrimary,
-                            focusedBorderColor = HunterPrimary, unfocusedBorderColor = HunterPrimary.copy(alpha = 0.5f),
-                            focusedLabelColor = HunterPrimary, unfocusedLabelColor = HunterTextSecondary
-                        )
+                        value = weight, onValueChange = { weight = it }, label = { Text("Peso") },
+                        modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = HunterTextPrimary, unfocusedTextColor = HunterTextPrimary, focusedBorderColor = HunterPrimary, unfocusedBorderColor = HunterPrimary.copy(alpha = 0.5f), focusedLabelColor = HunterPrimary, unfocusedLabelColor = HunterTextSecondary)
                     )
                     OutlinedTextField(
-                        value = reps,
-                        onValueChange = { reps = it },
-                        label = { Text("REPS") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = HunterTextPrimary, unfocusedTextColor = HunterTextPrimary,
-                            focusedBorderColor = HunterPrimary, unfocusedBorderColor = HunterPrimary.copy(alpha = 0.5f),
-                            focusedLabelColor = HunterPrimary, unfocusedLabelColor = HunterTextSecondary
-                        )
+                        value = reps, onValueChange = { reps = it }, label = { Text("REPS") },
+                        modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = HunterTextPrimary, unfocusedTextColor = HunterTextPrimary, focusedBorderColor = HunterPrimary, unfocusedBorderColor = HunterPrimary.copy(alpha = 0.5f), focusedLabelColor = HunterPrimary, unfocusedLabelColor = HunterTextSecondary)
                     )
                 }
 
                 OutlinedTextField(
-                    value = rir,
-                    onValueChange = { rir = it },
-                    label = { Text("RIR") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = HunterTextPrimary, unfocusedTextColor = HunterTextPrimary,
-                        focusedBorderColor = HunterPrimary, unfocusedBorderColor = HunterPrimary.copy(alpha = 0.5f),
-                        focusedLabelColor = HunterPrimary, unfocusedLabelColor = HunterTextSecondary
-                    )
+                    value = rir, onValueChange = { rir = it }, label = { Text("RIR") },
+                    modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = HunterTextPrimary, unfocusedTextColor = HunterTextPrimary, focusedBorderColor = HunterPrimary, unfocusedBorderColor = HunterPrimary.copy(alpha = 0.5f), focusedLabelColor = HunterPrimary, unfocusedLabelColor = HunterTextSecondary)
                 )
 
                 OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("Observaciones") },
+                    value = notes, onValueChange = { notes = it }, label = { Text("Observaciones") },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = HunterTextPrimary, unfocusedTextColor = HunterTextPrimary,
-                        focusedBorderColor = HunterPrimary, unfocusedBorderColor = HunterPrimary.copy(alpha = 0.5f),
-                        focusedLabelColor = HunterPrimary, unfocusedLabelColor = HunterTextSecondary
-                    )
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = HunterTextPrimary, unfocusedTextColor = HunterTextPrimary, focusedBorderColor = HunterPrimary, unfocusedBorderColor = HunterPrimary.copy(alpha = 0.5f), focusedLabelColor = HunterPrimary, unfocusedLabelColor = HunterTextSecondary)
                 )
             }
         },
@@ -328,18 +311,12 @@ fun EditHistoryDialog(
                     onSave(w, r, ri, notes)
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = HunterPrimary)
-            ) {
-                Text("Guardar", color = HunterBlack, fontWeight = FontWeight.Bold)
-            }
+            ) { Text("Guardar", color = HunterBlack, fontWeight = FontWeight.Bold) }
         },
         dismissButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, "Eliminar", tint = ScreenColors.Global.ErrorRed)
-                }
-                TextButton(onClick = onDismiss) {
-                    Text("Cancelar", color = HunterTextSecondary)
-                }
+                IconButton(onClick = onDelete) { Icon(Icons.Default.Delete, "Eliminar", tint = ScreenColors.Global.ErrorRed) }
+                TextButton(onClick = onDismiss) { Text("Cancelar", color = HunterTextSecondary) }
             }
         }
     )

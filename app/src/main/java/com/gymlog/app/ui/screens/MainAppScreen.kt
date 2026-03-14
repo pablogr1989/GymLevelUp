@@ -29,10 +29,10 @@ import com.gymlog.app.ui.screens.edit.EditSetScreen
 import com.gymlog.app.ui.screens.main.MainScreen
 import com.gymlog.app.ui.screens.timer.TimerScreen
 import com.gymlog.app.ui.screens.training.TrainingModeScreen
-import com.gymlog.app.ui.screens.history.WorkoutHistoryScreen // NUEVA PANTALLA IMPORTADA
+import com.gymlog.app.ui.screens.history.WorkoutHistoryScreen
+import com.gymlog.app.ui.screens.history.ExportHistoryScreen // Importamos la nueva
 import com.gymlog.app.ui.theme.*
 
-// Modificado para aceptar String directo y no tener que tocar strings.xml
 sealed class BottomNavItem(
     val route: String,
     @StringRes val titleResId: Int? = null,
@@ -42,29 +42,18 @@ sealed class BottomNavItem(
     object Exercises : BottomNavItem("exercises_tab", titleResId = R.string.nav_exercises, icon = Icons.Default.FitnessCenter)
     object Calendars : BottomNavItem("calendars_tab", titleResId = R.string.nav_calendars, icon = Icons.Default.CalendarMonth)
     object Timer : BottomNavItem("timer_tab", titleResId = R.string.nav_timer, icon = Icons.Default.Timer)
-
-    // NUEVA PESTAÑA AÑADIDA
     object History : BottomNavItem(Screen.WorkoutHistory.route, titleString = "Historial", icon = Icons.Default.History)
 }
 
 @Composable
 fun MainAppScreen() {
     val navController = rememberNavController()
-    // AÑADIMOS HISTORY A LA LISTA
-    val items = listOf(
-        BottomNavItem.Exercises,
-        BottomNavItem.Calendars,
-        BottomNavItem.History, // Aparecerá en 3er lugar
-        BottomNavItem.Timer
-    )
+    val items = listOf(BottomNavItem.Exercises, BottomNavItem.Calendars, BottomNavItem.History, BottomNavItem.Timer)
 
     Scaffold(
         containerColor = HunterBlack,
         bottomBar = {
-            NavigationBar(
-                containerColor = HunterSurface,
-                contentColor = HunterTextSecondary
-            ) {
+            NavigationBar(containerColor = HunterSurface, contentColor = HunterTextSecondary) {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
 
@@ -78,156 +67,70 @@ fun MainAppScreen() {
                         selected = isSelected,
                         onClick = {
                             navController.navigate(item.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true; restoreState = true
                             }
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = HunterBlack,
-                            selectedTextColor = HunterPrimary,
-                            indicatorColor = HunterPrimary,
-                            unselectedIconColor = HunterTextSecondary,
-                            unselectedTextColor = HunterTextSecondary
+                            selectedIconColor = HunterBlack, selectedTextColor = HunterPrimary,
+                            indicatorColor = HunterPrimary, unselectedIconColor = HunterTextSecondary, unselectedTextColor = HunterTextSecondary
                         )
                     )
                 }
             }
         }
     ) { paddingValues ->
-        NavHost(
-            navController = navController,
-            startDestination = BottomNavItem.Exercises.route,
-            modifier = Modifier.padding(paddingValues)
-        ) {
-            composable(Screen.CreateExercise.route) {
-                CreateExerciseScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            composable(
-                route = Screen.ExerciseDetail.route,
-                arguments = Screen.ExerciseDetail.arguments
-            ) { backStackEntry ->
+        NavHost(navController = navController, startDestination = BottomNavItem.Exercises.route, modifier = Modifier.padding(paddingValues)) {
+            composable(Screen.CreateExercise.route) { CreateExerciseScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable(route = Screen.ExerciseDetail.route, arguments = Screen.ExerciseDetail.arguments) { backStackEntry ->
                 val exerciseId = backStackEntry.arguments?.getString("exerciseId") ?: ""
-
                 ExerciseDetailScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToEdit = { id ->
-                        navController.navigate(Screen.EditExercise.createRoute(id))
-                    },
-                    onNavigateToEditSet = { _, setId ->
-                        navController.navigate(Screen.EditSet.createRoute(exerciseId, setId))
-                    }
+                    onNavigateToEdit = { id -> navController.navigate(Screen.EditExercise.createRoute(id)) },
+                    onNavigateToEditSet = { _, setId -> navController.navigate(Screen.EditSet.createRoute(exerciseId, setId)) }
                 )
             }
-
-            composable(
-                route = Screen.EditExercise.route,
-                arguments = Screen.EditExercise.arguments
-            ) {
-                EditExerciseScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            composable(
-                route = Screen.EditSet.route,
-                arguments = Screen.EditSet.arguments
-            ) {
-                EditSetScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            composable(Screen.CreateCalendar.route) {
-                CreateCalendarScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            composable(
-                route = Screen.DaySlotDetail.route,
-                arguments = Screen.DaySlotDetail.arguments
-            ) {
+            composable(route = Screen.EditExercise.route, arguments = Screen.EditExercise.arguments) { EditExerciseScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable(route = Screen.EditSet.route, arguments = Screen.EditSet.arguments) { EditSetScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable(Screen.CreateCalendar.route) { CreateCalendarScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable(route = Screen.DaySlotDetail.route, arguments = Screen.DaySlotDetail.arguments) {
                 DaySlotDetailScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToExercise = { exerciseId ->
-                        navController.navigate(Screen.ExerciseDetail.createRoute(exerciseId))
-                    },
-                    onNavigateToTraining = { daySlotId ->
-                        navController.navigate(Screen.TrainingMode.createRoute(daySlotId))
-                    }
+                    onNavigateToExercise = { exerciseId -> navController.navigate(Screen.ExerciseDetail.createRoute(exerciseId)) },
+                    onNavigateToTraining = { daySlotId -> navController.navigate(Screen.TrainingMode.createRoute(daySlotId)) }
                 )
             }
-
-            composable(
-                route = Screen.TrainingMode.route,
-                arguments = Screen.TrainingMode.arguments
-            ) {
-                TrainingModeScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
-
-            composable(
-                route = Screen.CalendarDetail.route,
-                arguments = Screen.CalendarDetail.arguments
-            ) {
+            composable(route = Screen.TrainingMode.route, arguments = Screen.TrainingMode.arguments) { TrainingModeScreen(onNavigateBack = { navController.popBackStack() }) }
+            composable(route = Screen.CalendarDetail.route, arguments = Screen.CalendarDetail.arguments) {
                 CalendarDetailScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToEdit = { daySlotId ->
-                        navController.navigate(Screen.DaySlotDetail.createRoute(daySlotId))
-                    },
-                    onNavigateToExercise = { exerciseId ->
-                        navController.navigate(Screen.ExerciseDetail.createRoute(exerciseId))
-                    }
+                    onNavigateToEdit = { daySlotId -> navController.navigate(Screen.DaySlotDetail.createRoute(daySlotId)) },
+                    onNavigateToExercise = { exerciseId -> navController.navigate(Screen.ExerciseDetail.createRoute(exerciseId)) }
                 )
             }
-
-
             composable(BottomNavItem.Exercises.route) {
                 MainScreen(
-                    onNavigateToDetail = { exerciseId ->
-                        navController.navigate(Screen.ExerciseDetail.createRoute(exerciseId))
-                    },
-                    onNavigateToCreate = {
-                        navController.navigate(Screen.CreateExercise.route)
-                    },
-                    onNavigateToBackup = {
-                        navController.navigate(Screen.Backup.route)
-                    }
+                    onNavigateToDetail = { exerciseId -> navController.navigate(Screen.ExerciseDetail.createRoute(exerciseId)) },
+                    onNavigateToCreate = { navController.navigate(Screen.CreateExercise.route) },
+                    onNavigateToBackup = { navController.navigate(Screen.Backup.route) }
                 )
             }
-
             composable(BottomNavItem.Calendars.route) {
                 CalendarsListScreen(
-                    onNavigateToDetail = { calendarId ->
-                        navController.navigate(Screen.CalendarDetail.createRoute(calendarId))
-                    },
-                    onNavigateToCreate = {
-                        navController.navigate(Screen.CreateCalendar.route)
-                    }
+                    onNavigateToDetail = { calendarId -> navController.navigate(Screen.CalendarDetail.createRoute(calendarId)) },
+                    onNavigateToCreate = { navController.navigate(Screen.CreateCalendar.route) }
                 )
             }
-
-            // NUEVA RUTA PARA EL HISTORIAL AÑADIDA AQUÍ
             composable(Screen.WorkoutHistory.route) {
-                WorkoutHistoryScreen()
+                // AQUÍ PASAMOS LA NAVEGACIÓN HACIA LA EXPORTACIÓN
+                WorkoutHistoryScreen(onNavigateToExport = { navController.navigate(Screen.ExportHistory.route) })
             }
-
-            composable(BottomNavItem.Timer.route) {
-                TimerScreen()
+            // NUEVA PANTALLA AÑADIDA AL NAVHOST
+            composable(Screen.ExportHistory.route) {
+                ExportHistoryScreen(onNavigateBack = { navController.popBackStack() })
             }
-
-            composable(Screen.Backup.route) {
-                BackupScreen(
-                    onNavigateBack = { navController.popBackStack() }
-                )
-            }
+            composable(BottomNavItem.Timer.route) { TimerScreen() }
+            composable(Screen.Backup.route) { BackupScreen(onNavigateBack = { navController.popBackStack() }) }
         }
     }
 }
