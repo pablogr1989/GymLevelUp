@@ -33,7 +33,6 @@ class ExportHistoryViewModel @Inject constructor(
     private val application: Application
 ) : ViewModel() {
 
-    // allHistory sí se observa por la UI (a través de exportGroups), así que siempre está actualizado
     private val allHistory = exerciseRepository.getAllDetailedHistory().stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     private val _daySlotHierarchies = MutableStateFlow<Map<String, DaySlotHierarchy>>(emptyMap())
@@ -128,7 +127,6 @@ class ExportHistoryViewModel @Inject constructor(
         viewModelScope.launch {
             _exportState.value = ExportState.Loading
             try {
-                // CORRECCIÓN: Solicitamos a la base de datos la lista de ejercicios de forma directa e inmediata.
                 val exercisesList = exerciseRepository.getAllExercises().first()
                 val exercises = exercisesList.associateBy { it.id }
 
@@ -136,8 +134,6 @@ class ExportHistoryViewModel @Inject constructor(
                 val hierarchies = _daySlotHierarchies.value
 
                 val jsonArray = JSONArray()
-
-                // Ordenamos las series cronológicamente antes de meterlas al JSON
                 val sortedHistories = historiesToExport.sortedBy { it.timestamp }
 
                 sortedHistories.forEach { history ->
@@ -157,11 +153,15 @@ class ExportHistoryViewModel @Inject constructor(
                         put("mes", hierarchy?.let { if (it.monthName.isNotBlank()) it.monthName else "Mes ${it.monthNumber}" } ?: "Sin Mes")
                         put("semana", hierarchy?.weekNumber ?: 0)
                         put("dia", hierarchy?.dayOfWeek?.name ?: "Desconocido")
-                        put("ejercicio", exercise?.name ?: "Ejercicio Eliminado") // ¡Ahora esto funcionará correctamente!
+                        put("ejercicio", exercise?.name ?: "Ejercicio Eliminado")
                         put("numero_serie", history.seriesNumber)
                         put("reps_objetivas", targetReps)
                         put("rir_objetivo", targetRir)
                         put("reps_conseguidas", history.reps)
+
+                        // --- AQUÍ AÑADIMOS EL NUEVO CAMPO RIR CONSEGUIDO ---
+                        put("rir_conseguido", history.rir ?: "")
+
                         put("peso_logrado", history.weightKg)
                         put("observaciones", history.notes)
                     }

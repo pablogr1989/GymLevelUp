@@ -45,7 +45,7 @@ fun WorkoutHistoryScreen(
     val editingItem by viewModel.editingItem.collectAsState()
 
     val expandedGroups by viewModel.expandedGroups.collectAsState()
-    val expandedExercises by viewModel.expandedExercises.collectAsState() // NUEVO ESTADO
+    val expandedExercises by viewModel.expandedExercises.collectAsState()
 
     val isSelectionMode = selectedIds.isNotEmpty()
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy - HH:mm", Locale.getDefault()) }
@@ -110,10 +110,13 @@ fun WorkoutHistoryScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // DOBLE BUCLE: Días -> Ejercicios -> Series
                 groupedHistory.forEach { (daySlotId, exercisesMap) ->
                     val hierarchy = daySlotHierarchies[daySlotId]
                     val isDayExpanded = expandedGroups.contains(daySlotId)
+
+                    // NUEVO: Verificamos si TODO el bloque del día está seleccionado
+                    val allItemsInDaySlot = exercisesMap.values.flatten().map { it.history.id }
+                    val isDaySlotSelected = selectedIds.containsAll(allItemsInDaySlot) && allItemsInDaySlot.isNotEmpty()
 
                     item {
                         // NIVEL 1: CABECERA DEL DÍA
@@ -121,8 +124,15 @@ fun WorkoutHistoryScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .clickable { viewModel.toggleGroup(daySlotId) }
-                                .padding(vertical = 8.dp)
+                                .background(if (isDaySlotSelected) HunterPrimary.copy(alpha = 0.15f) else Color.Transparent) // Fondo sutil si está seleccionado
+                                .combinedClickable(
+                                    onClick = {
+                                        if (isSelectionMode) viewModel.toggleDaySlotSelection(daySlotId)
+                                        else viewModel.toggleGroup(daySlotId)
+                                    },
+                                    onLongClick = { viewModel.toggleDaySlotSelection(daySlotId) }
+                                )
+                                .padding(vertical = 8.dp, horizontal = if (isDaySlotSelected) 8.dp else 0.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -135,7 +145,7 @@ fun WorkoutHistoryScreen(
                                         Text(
                                             text = "${hierarchy.calendarName} / $monthText / Semana ${hierarchy.weekNumber}",
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = HunterTextSecondary
+                                            color = if (isDaySlotSelected) HunterPrimary else HunterTextSecondary
                                         )
 
                                         val categoriesText = hierarchy.categories.map { stringResource(UiMappers.getDisplayNameRes(it)) }.joinToString(", ")
@@ -213,7 +223,7 @@ fun WorkoutHistoryScreen(
                                     Card(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(start = 32.dp, bottom = 8.dp) // Mayor indentación para anidar
+                                            .padding(start = 32.dp, bottom = 8.dp)
                                             .combinedClickable(
                                                 onClick = {
                                                     if (isSelectionMode) viewModel.toggleSelection(item.history.id)

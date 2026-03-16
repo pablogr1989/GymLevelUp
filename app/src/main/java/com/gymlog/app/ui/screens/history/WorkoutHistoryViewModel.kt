@@ -43,7 +43,6 @@ class WorkoutHistoryViewModel @Inject constructor(
     private val _daySlotHierarchies = MutableStateFlow<Map<String, DaySlotHierarchy>>(emptyMap())
     val daySlotHierarchies = _daySlotHierarchies.asStateFlow()
 
-    // NUEVO: Agrupamos el historial primero por DaySlotId y luego por ExerciseId
     val groupedHistory = combine(allExercises, allHistory) { exercises, historyList ->
         val exerciseMap = exercises.associateBy { it.id }
 
@@ -61,7 +60,6 @@ class WorkoutHistoryViewModel @Inject constructor(
             )
         }
 
-        // Doble agrupación: { DaySlotId -> { ExerciseId -> List<HistoryItemUi> } }
         uiItems.groupBy { it.history.daySlotId }
             .mapValues { (_, items) -> items.groupBy { it.history.exerciseId } }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyMap())
@@ -72,11 +70,9 @@ class WorkoutHistoryViewModel @Inject constructor(
     private val _editingItem = MutableStateFlow<HistoryItemUi?>(null)
     val editingItem = _editingItem.asStateFlow()
 
-    // Control del primer nivel de desplegables (Días)
     private val _expandedGroups = MutableStateFlow<Set<String>>(emptySet())
     val expandedGroups = _expandedGroups.asStateFlow()
 
-    // NUEVO: Control del segundo nivel de desplegables (Ejercicios)
     private val _expandedExercises = MutableStateFlow<Set<String>>(emptySet())
     val expandedExercises = _expandedExercises.asStateFlow()
 
@@ -121,7 +117,6 @@ class WorkoutHistoryViewModel @Inject constructor(
         }
     }
 
-    // NUEVO: Función para abrir/cerrar un ejercicio específico dentro de un día
     fun toggleExerciseGroup(daySlotId: String, exerciseId: String) {
         val key = "${daySlotId}_${exerciseId}"
         _expandedExercises.update { current ->
@@ -132,6 +127,22 @@ class WorkoutHistoryViewModel @Inject constructor(
     fun toggleSelection(id: String) {
         _selectedIds.update { current ->
             if (current.contains(id)) current - id else current + id
+        }
+    }
+
+    // NUEVA FUNCIÓN: Seleccionar o deseleccionar todo el bloque del día
+    fun toggleDaySlotSelection(daySlotId: String) {
+        val historyItems = groupedHistory.value[daySlotId]?.values?.flatten() ?: return
+        val itemIds = historyItems.map { it.history.id }.toSet()
+
+        _selectedIds.update { currentSelected ->
+            if (currentSelected.containsAll(itemIds)) {
+                // Si ya estaban todos seleccionados, los deseleccionamos
+                currentSelected - itemIds
+            } else {
+                // Si no, los seleccionamos todos
+                currentSelected + itemIds
+            }
         }
     }
 
