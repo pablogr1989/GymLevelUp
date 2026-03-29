@@ -334,4 +334,35 @@ class TrainingModeViewModel @Inject constructor(
     fun onBackPressed() { if (_localUiState.value.isTrainingActive) _localUiState.update { it.copy(showExitConfirmation = true) } }
     fun confirmExit() { _localUiState.update { it.copy(showExitConfirmation = false, isTrainingActive = false) }; stopTimer() }
     fun dismissExitConfirmation() { _localUiState.update { it.copy(showExitConfirmation = false) } }
+
+    fun moveBlock(fromIndex: Int, toIndex: Int) {
+        val state = _localUiState.value
+
+        // Comprobamos si el ejercicio actual ya ha sido empezado
+        val hasStartedCurrentExercise = state.currentSetIndex > 0 || state.currentSeries > 1 || state.isSeriesRunning
+
+        // Si ya lo has empezado, se bloquea. Si no, el límite es el ejercicio anterior (-1)
+        val lockedLimit = if (state.isTrainingActive) {
+            if (hasStartedCurrentExercise) state.currentBlockIndex else state.currentBlockIndex - 1
+        } else {
+            -1
+        }
+
+        // Evitamos mover ejercicios que ya están bloqueados/completados
+        if (fromIndex <= lockedLimit || toIndex <= lockedLimit) return
+        if (fromIndex !in state.blocks.indices || toIndex !in state.blocks.indices) return
+
+        val newBlocks = state.blocks.toMutableList()
+        val item = newBlocks.removeAt(fromIndex)
+        newBlocks.add(toIndex, item)
+
+        // Actualizamos la lista
+        _localUiState.update { it.copy(blocks = newBlocks) }
+
+        // Si hemos movido el ejercicio que estaba activo, recargamos la interfaz
+        // para que muestre el peso y los datos de la nueva máquina
+        if (state.isTrainingActive && (fromIndex == state.currentBlockIndex || toIndex == state.currentBlockIndex)) {
+            loadCurrentBlockData()
+        }
+    }
 }

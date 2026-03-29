@@ -24,7 +24,7 @@ data class TimerState(
     val remainingSeconds: Int = 0,
     val isRunning: Boolean = false,
     val isAlarmRinging: Boolean = false,
-    val totalDuration: Int = 0 // Para saber cuánto era el total inicial si se necesita
+    val totalDuration: Int = 0
 )
 
 @Singleton
@@ -37,12 +37,7 @@ class TimerManager @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var timerJob: Job? = null
 
-    /**
-     * Inicia una cuenta atrás de [seconds] segundos.
-     * @param timerType Tipo de timer para la notificación (TrainingConstants.TIMER_TYPE_...)
-     */
     fun startTimer(seconds: Int, timerType: String = TrainingConstants.TIMER_TYPE_STANDARD) {
-        // Detener cualquier timer previo
         stopTimer(resetState = false)
 
         _timerState.update {
@@ -54,7 +49,7 @@ class TimerManager @Inject constructor(
             )
         }
 
-        // 1. Programar la Alarma del Sistema (Para despertar el móvil si se apaga la pantalla)
+        // 1. Programar la Alarma del Sistema a prueba de HyperOS
         scheduleSystemAlarm(seconds, timerType)
 
         // 2. Iniciar el loop visual (Tick-Tock)
@@ -63,13 +58,12 @@ class TimerManager @Inject constructor(
             val durationMs = seconds * 1000L
 
             while (_timerState.value.remainingSeconds > 0 && _timerState.value.isRunning) {
-                // Cálculo basado en tiempo real para mayor precisión que un simple delay
                 val elapsed = System.currentTimeMillis() - startTime
                 val remaining = ((durationMs - elapsed) / 1000L).coerceAtLeast(0)
 
                 _timerState.update { it.copy(remainingSeconds = remaining.toInt()) }
 
-                if (remaining > 0) delay(100L) // Chequeo frecuente para fluidez
+                if (remaining > 0) delay(100L)
             }
 
             if (_timerState.value.remainingSeconds == 0) {
@@ -118,13 +112,11 @@ class TimerManager @Inject constructor(
         _timerState.update {
             it.copy(isRunning = false, isAlarmRinging = true, remainingSeconds = 0)
         }
-        // Nota: La alarma del sistema (AlarmManager) disparará el BroadcastReceiver
-        // que a su vez inicia el servicio de sonido.
-        // El Manager mantiene el estado de UI sincronizado.
     }
 
     private fun scheduleSystemAlarm(seconds: Int, timerType: String) {
         val alarmManager = application.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
         val intent = Intent(application, AlarmReceiver::class.java).apply {
             putExtra(TrainingConstants.EXTRA_TIMER_TYPE, timerType)
         }
@@ -136,13 +128,26 @@ class TimerManager @Inject constructor(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Trigger exacto
         val triggerTime = System.currentTimeMillis() + (seconds * 1000L)
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
-        } else {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
+        try {
+            val showIntent = PendingIntent.getActivity(
+                application,
+                0,
+                application.packageManager.getLaunchIntentForPackage(application.packageName) ?: Intent(),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val alarmClockInfo = AlarmManager.AlarmClockInfo(triggerTime, showIntent)
+            alarmManager.setAlarmClock(alarmClockInfo, pendingIntent)
+
+        } catch (e: SecurityException) {
+            // Fallback por si en algún momento Android restringe el permiso
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
+            } else {
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
+            }
         }
     }
 

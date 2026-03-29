@@ -122,7 +122,15 @@ fun TrainingModeScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            HunterObjectiveCard(blocks = uiState.blocks, currentIndex = uiState.currentBlockIndex, isTrainingActive = uiState.isTrainingActive)
+            val hasStartedCurrentExercise = uiState.currentSetIndex > 0 || uiState.currentSeries > 1 || uiState.isSeriesRunning
+
+            HunterObjectiveCard(
+                blocks = uiState.blocks,
+                currentIndex = uiState.currentBlockIndex,
+                isTrainingActive = uiState.isTrainingActive,
+                hasStartedCurrentExercise = hasStartedCurrentExercise,
+                onMoveBlock = viewModel::moveBlock
+            )
 
             if (!uiState.isTrainingActive) {
                 HunterRestConfig(minutes = uiState.restMinutes, onMinutesChange = viewModel::updateRestMinutes)
@@ -215,7 +223,13 @@ private fun HunterMissionProgress(state: TrainingUiState) {
 }
 
 @Composable
-private fun HunterObjectiveCard(blocks: List<TrainingBlock>, currentIndex: Int, isTrainingActive: Boolean) {
+private fun HunterObjectiveCard(
+    blocks: List<TrainingBlock>,
+    currentIndex: Int,
+    isTrainingActive: Boolean,
+    hasStartedCurrentExercise: Boolean, // NUEVO PARÁMETRO
+    onMoveBlock: (Int, Int) -> Unit
+) {
     HunterCard {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Ejercicios a completar", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp), color = ScreenColors.TrainingMode.ObjectiveTitle)
@@ -225,6 +239,12 @@ private fun HunterObjectiveCard(blocks: List<TrainingBlock>, currentIndex: Int, 
                 blocks.forEachIndexed { index, block ->
                     val isCurrent = isTrainingActive && index == currentIndex
                     val isDone = isTrainingActive && index < currentIndex
+
+                    // LÓGICA DE BLOQUEO ACTUALIZADA
+                    val isLocked = if (isTrainingActive) {
+                        if (hasStartedCurrentExercise) index <= currentIndex else index < currentIndex
+                    } else false
+
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.fillMaxWidth().background(if (isCurrent) ScreenColors.TrainingMode.ObjectiveItemBgCurrent else ScreenColors.TrainingMode.ObjectiveItemBgDefault, RoundedCornerShape(8.dp)).padding(8.dp)
@@ -232,7 +252,31 @@ private fun HunterObjectiveCard(blocks: List<TrainingBlock>, currentIndex: Int, 
                         Box(modifier = Modifier.size(8.dp).background(when { isCurrent -> ScreenColors.TrainingMode.ObjectiveDotCurrent; isDone -> ScreenColors.TrainingMode.ObjectiveDotDone; else -> ScreenColors.TrainingMode.ObjectiveDotPending }, CircleShape))
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(text = block.exercise.name.uppercase(), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (isCurrent) FontWeight.Black else FontWeight.Normal), color = if (isDone) ScreenColors.TrainingMode.ObjectiveTextDone else ScreenColors.TrainingMode.ObjectiveTextDefault, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (isDone) { Icon(Icons.Default.Check, null, tint = ScreenColors.TrainingMode.ObjectiveCheckIcon, modifier = Modifier.size(16.dp)) }
+
+                        if (isDone) {
+                            Icon(Icons.Default.Check, null, tint = ScreenColors.TrainingMode.ObjectiveCheckIcon, modifier = Modifier.size(24.dp))
+                        } else if (!isLocked) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // LÍMITES PARA LAS FLECHAS
+                                val topLimit = if (isTrainingActive) {
+                                    if (hasStartedCurrentExercise) currentIndex + 1 else currentIndex
+                                } else 0
+
+                                val canMoveUp = index > topLimit
+                                val canMoveDown = index < blocks.size - 1
+
+                                if (canMoveUp) {
+                                    IconButton(onClick = { onMoveBlock(index, index - 1) }, modifier = Modifier.size(32.dp)) {
+                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Subir", tint = HunterTextSecondary)
+                                    }
+                                }
+                                if (canMoveDown) {
+                                    IconButton(onClick = { onMoveBlock(index, index + 1) }, modifier = Modifier.size(32.dp)) {
+                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Bajar", tint = HunterTextSecondary)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
